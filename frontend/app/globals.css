@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FAFAFA;
+  --foreground: #4A5568;
+}
+
+@layer base {
+  body {
+    @apply bg-clinic-white text-slate-gray antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold text-slate-gray-dark tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-medical-blue text-white px-6 py-3 rounded-2xl font-medium transition-all hover:bg-medical-blue-dark active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .card {
+    @apply bg-white border border-slate-gray-light/20 rounded-3xl p-6 shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  .input-field {
+    @apply bg-white border border-slate-gray-light rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-medical-blue/20 focus:border-medical-blue transition-all;
+  }
+}
+
+/* Clinical Description Styling */
+.clinical-description table {
+  @apply w-full border-collapse my-6 rounded-2xl overflow-hidden border border-slate-gray-light/20;
+}
+
+.clinical-description th,
+.clinical-description td {
+  @apply p-4 border-b border-slate-gray-light/10 text-left text-sm;
+}
+
+.clinical-description tr:last-child td {
+  @apply border-b-0;
+}
+
+.clinical-description th {
+  @apply bg-medical-blue/5 text-medical-blue font-black uppercase tracking-widest text-[10px];
+}
+
+.clinical-description tr:nth-child(even) {
+  @apply bg-slate-gray-light/5;
+}
+
+.clinical-description h4 {
+  @apply text-lg font-black text-slate-gray-dark mt-8 mb-4 uppercase tracking-tight flex items-center gap-2;
+}
+
+.clinical-description h4::before {
+  content: "";
+  @apply w-1.5 h-6 bg-medical-blue rounded-full;
+}
+
+.clinical-description ul {
+  @apply space-y-3 my-6 list-none !important;
+}
+
+.clinical-description li {
+  @apply flex items-start gap-3 text-base;
+}
+
+.clinical-description li::before {
+  content: "•";
+  @apply text-medical-blue font-black;
+}
