@@ -29,6 +29,7 @@ import ComplianceVault from './components/ComplianceVault';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useAuthStore } from '@/app/store/useAuthStore';
 import { Archive } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function UserDashboard() {
     const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview');
@@ -50,9 +51,10 @@ export default function UserDashboard() {
             document.body.appendChild(a);
             a.click();
             a.remove();
+            toast.success("Dossier réglementaire téléchargé");
         } catch (error) {
             console.error(error);
-            alert("Erreur lors du téléchargement du dossier réglementaire");
+            toast.error("Erreur lors du téléchargement du dossier réglementaire");
         }
     };
 
@@ -95,9 +97,10 @@ export default function UserDashboard() {
             });
 
             setMessage("Produits ajoutés au panier ! Redirection...");
+            toast.success("Produits ajoutés au panier !");
             setTimeout(() => window.location.href = '/cart', 1500);
         } catch (error) {
-            alert("Erreur lors de la commande rapide");
+            toast.error("Erreur lors de la commande rapide");
         }
     };
 
@@ -108,10 +111,10 @@ export default function UserDashboard() {
         setUploading(true);
         try {
             await uploadVerificationLicense(file);
-            alert("Licence téléchargée avec succès. En attente de vérification manuelle.");
-            window.location.reload();
+            toast.success("Licence envoyée. En attente de vérification manuelle.");
+            setTimeout(() => window.location.reload(), 2000);
         } catch (error) {
-            alert("Échec du téléchargement");
+            toast.error("Échec du téléchargement");
         } finally {
             setUploading(false);
         }
@@ -121,9 +124,10 @@ export default function UserDashboard() {
         try {
             const orderData = await fetchOrderInvoice(orderId);
             generateOrderInvoicePDF(orderData);
+            toast.success("Téléchargement de la facture...");
         } catch (error) {
             console.error(error);
-            alert("Erreur lors du téléchargement de la facture : " + error);
+            toast.error("Erreur lors du téléchargement de la facture");
         }
     };
 

@@ -5,6 +5,7 @@ import { ShieldCheck, Truck, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createOrder } from '@/app/lib/api';
+import { toast } from 'react-hot-toast';
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -40,7 +41,8 @@ export default function CheckoutPage() {
         clinic_name: '',
         phone: '',
         address: '',
-        city: ''
+        city: '',
+        zip_code: ''
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -63,6 +65,7 @@ export default function CheckoutPage() {
                     phone: formData.phone,
                     address: formData.address,
                     city: formData.city,
+                    zip_code: formData.zip_code,
                     clinic_name: formData.clinic_name || undefined
                 }
             };
@@ -72,7 +75,7 @@ export default function CheckoutPage() {
             window.dispatchEvent(new Event('cart_updated'));
             router.push(`/checkout/success?order_id=${order.id}`);
         } catch (error) {
-            alert("Erreur lors de la validation de la commande. Veuillez vérifier vos informations.");
+            toast.error("Erreur lors de la validation de la commande. Veuillez vérifier vos informations.");
             setIsSubmitting(false);
         }
     };
@@ -114,9 +117,15 @@ export default function CheckoutPage() {
                                 <label className="text-xs font-bold text-slate-gray uppercase">Adresse Complète</label>
                                 <textarea required name="address" value={formData.address} onChange={handleChange} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="123 Avenue Mohamed V..."></textarea>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-gray uppercase">Ville</label>
-                                <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Casablanca" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-gray uppercase">Ville</label>
+                                    <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Casablanca" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-gray uppercase">Code Postal</label>
+                                    <input required name="zip_code" value={formData.zip_code} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="20000" />
+                                </div>
                             </div>
                             <div className="mt-8">
                                 <div className="bg-sage-green/10 border border-sage-green/30 rounded-2xl p-4 flex items-start gap-4 mb-6">

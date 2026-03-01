@@ -9,6 +9,7 @@ import {
     fetchAdminOrders, fetchAdminUsers, updateOrderStatus, verifyUser,
     fetchProducts, createProduct, updateProduct, deleteProduct
 } from '@/app/lib/api';
+import { toast } from 'react-hot-toast';
 
 type TabType = 'dashboard' | 'orders' | 'products' | 'customers' | 'settings';
 
@@ -55,8 +56,9 @@ export default function AdminDashboard() {
             await updateOrderStatus(orderId, status);
             const ordersData = await fetchAdminOrders();
             setOrders(ordersData);
+            toast.success("Statut de la commande mis à jour");
         } catch (error) {
-            alert("Erreur lors de la mise à jour du statut");
+            toast.error("Erreur lors de la mise à jour du statut");
         }
     };
 
@@ -65,8 +67,9 @@ export default function AdminDashboard() {
             await verifyUser(userId);
             const usersData = await fetchAdminUsers();
             setUsers(usersData);
+            toast.success("Utilisateur vérifié avec succès");
         } catch (error) {
-            alert("Erreur lors de la vérification");
+            toast.error("Erreur lors de la vérification");
         }
     };
 
@@ -96,16 +99,20 @@ export default function AdminDashboard() {
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const currentData = { ...productForm };
             if (editingProduct) {
-                await updateProduct(editingProduct.id, productForm);
+                await updateProduct(editingProduct.id, currentData);
+                toast.success("Produit mis à jour !");
             } else {
-                await createProduct(productForm);
+                await createProduct(currentData);
+                toast.success("Produit crée !");
             }
             setIsProductModalOpen(false);
             const productsData = await fetchProducts();
-            setProducts(productsData);
+            // Account for pagination metadata `{ data: [...] }` if returned
+            setProducts(productsData.data || productsData.items || productsData);
         } catch (error) {
-            alert("Error saving product.");
+            toast.error("Error saving product.");
         }
     };
 
@@ -114,9 +121,10 @@ export default function AdminDashboard() {
             try {
                 await deleteProduct(productId);
                 const productsData = await fetchProducts();
-                setProducts(productsData);
+                setProducts(productsData.data || productsData.items || productsData);
+                toast.success("Produit supprimé !");
             } catch (error) {
-                alert("Error deleting product.");
+                toast.error("Error deleting product.");
             }
         }
     };

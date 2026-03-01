@@ -27,6 +27,7 @@ class OrderCreateAddress(BaseModel):
     phone: str
     address: str
     city: str
+    zip_code: str
     clinic_name: Optional[str] = None
 
 class OrderBase(BaseModel):
@@ -36,6 +37,9 @@ class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
     shipping_details: Optional[OrderCreateAddress] = None
     shipping_address_id: Optional[int] = None
+
+class Order(OrderBase):
+    shipping_address_id: int
     id: uuid.UUID
     user_id: uuid.UUID
     total_amount: Decimal

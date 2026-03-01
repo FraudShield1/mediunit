@@ -37,7 +37,7 @@ async def create_order(
         new_address = Address(
             street_address=order_in.shipping_details.address,
             city=order_in.shipping_details.city,
-            zip_code="00000", # Default for now
+            zip_code=order_in.shipping_details.zip_code,
             is_primary=False,
             user_id=current_user.id
         )

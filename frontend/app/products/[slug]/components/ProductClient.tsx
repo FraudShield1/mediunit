@@ -24,6 +24,7 @@ import { useLanguageStore } from '@/app/store/useLanguageStore';
 import ComplianceGateModal from '@/app/components/ComplianceGateModal';
 import Link from 'next/link';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
 
 export default function ProductClient({ slug, initialData }: { slug: string, initialData?: any }) {
     const { language, setLanguage, t } = useLanguageStore();
@@ -121,7 +122,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
             quantity: quantity,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        alert(`${quantity}x ${displayName} (${product.packaging_type || 'Unité'}) ${t('ajouté(s) au panier !', 'added to cart!')}`);
+        toast.success(`${quantity}x ${displayName} (${product.packaging_type || 'Unité'}) ${t('ajouté(s) au panier !', 'added to cart!')}`);
     };
 
     const getDiscountInfo = (qty: number) => {

@@ -5,6 +5,7 @@ import { Package, Plus, ChevronRight, Activity, ShoppingCart } from 'lucide-reac
 import Link from 'next/link';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import { toast } from 'react-hot-toast';
 
 interface CategoryClientProps {
     slug: string;
@@ -29,7 +30,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
             quantity: 1,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        alert(`${product.name} ${t('ajouté au panier !', 'added to cart!')}`);
+        toast.success(`${product.name} ${t('ajouté au panier !', 'added to cart!')}`);
     };
 
     return (
