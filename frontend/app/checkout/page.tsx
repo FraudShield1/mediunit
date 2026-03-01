@@ -34,17 +34,37 @@ export default function CheckoutPage() {
     const tax = subtotal * 0.20; // 20% VAT
     const total = subtotal + tax;
 
+    const [formData, setFormData] = useState({
+        first_name: '',
+        last_name: '',
+        clinic_name: '',
+        phone: '',
+        address: '',
+        city: ''
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         try {
             const orderData = {
-                shipping_address_id: 1, // Hardcoded for demo
                 items: cartItems.map(item => ({
                     product_id: item.productId || item.id,
                     quantity: item.quantity
-                }))
+                })),
+                shipping_details: {
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                    phone: formData.phone,
+                    address: formData.address,
+                    city: formData.city,
+                    clinic_name: formData.clinic_name || undefined
+                }
             };
 
             const order = await createOrder(orderData);
@@ -52,7 +72,7 @@ export default function CheckoutPage() {
             window.dispatchEvent(new Event('cart_updated'));
             router.push(`/checkout/success?order_id=${order.id}`);
         } catch (error) {
-            alert("Erreur lors de la validation de la commande.");
+            alert("Erreur lors de la validation de la commande. Veuillez vérifier vos informations.");
             setIsSubmitting(false);
         }
     };
@@ -75,28 +95,28 @@ export default function CheckoutPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-gray uppercase">Prénom</label>
-                                    <input required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Dr. Jean" />
+                                    <input required name="first_name" value={formData.first_name} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Dr. Jean" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-gray uppercase">Nom</label>
-                                    <input required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Dupont" />
+                                    <input required name="last_name" value={formData.last_name} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Dupont" />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-gray uppercase">Clinique / Cabinet (Optionnel)</label>
-                                <input type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Clinique des Lilas" />
+                                <input name="clinic_name" value={formData.clinic_name} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Clinique des Lilas" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-gray uppercase">Téléphone</label>
-                                <input required type="tel" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="+212 600 000 000" />
+                                <input required name="phone" value={formData.phone} onChange={handleChange} type="tel" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="+212 600 000 000" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-gray uppercase">Adresse Complète</label>
-                                <textarea required rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="123 Avenue Mohamed V..."></textarea>
+                                <textarea required name="address" value={formData.address} onChange={handleChange} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="123 Avenue Mohamed V..."></textarea>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-gray uppercase">Ville</label>
-                                <input required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Casablanca" />
+                                <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-gray-light/30 focus:border-medical-blue focus:ring-2 focus:ring-medical-blue/20 outline-none transition-all" placeholder="Casablanca" />
                             </div>
                             <div className="mt-8">
                                 <div className="bg-sage-green/10 border border-sage-green/30 rounded-2xl p-4 flex items-start gap-4 mb-6">

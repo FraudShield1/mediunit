@@ -30,6 +30,24 @@ async def create_order(
     total_amount = Decimal("0.00")
     order_items = []
     
+    # Handle dynamic address creation from Checkout flow
+    shipping_address_id = order_in.shipping_address_id
+    if order_in.shipping_details:
+        from app.models.user import Address
+        new_address = Address(
+            street_address=order_in.shipping_details.address,
+            city=order_in.shipping_details.city,
+            zip_code="00000", # Default for now
+            is_primary=False,
+            user_id=current_user.id
+        )
+        db.add(new_address)
+        await db.flush() # Get the new ID
+        shipping_address_id = new_address.id
+
+    if not shipping_address_id:
+        raise HTTPException(status_code=400, detail="A shipping address or details must be provided.")
+        
     # Fetch all products at once to prevent N+1
     product_ids = [item_in.product_id for item_in in order_in.items]
     product_result = await db.execute(
@@ -82,9 +100,10 @@ async def create_order(
             )
         )
     
+    from app.models.order import Order, OrderStatus
     db_order = Order(
         user_id=current_user.id,
-        shipping_address_id=order_in.shipping_address_id,
+        shipping_address_id=shipping_address_id,
         total_amount=total_amount,
         status=OrderStatus.pending,
         items=order_items

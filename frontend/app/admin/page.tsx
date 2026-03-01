@@ -41,7 +41,7 @@ export default function AdminDashboard() {
                 ]);
                 setOrders(ordersData);
                 setUsers(usersData);
-                setProducts(productsData);
+                setProducts(productsData.data || productsData.items || productsData);
             }
         } catch (error) {
             console.error("Failed to load admin data:", error);

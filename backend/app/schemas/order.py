@@ -21,13 +21,21 @@ class OrderItem(OrderItemBase):
         from_attributes = True
 
 # Order Schemas
+class OrderCreateAddress(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    address: str
+    city: str
+    clinic_name: Optional[str] = None
+
 class OrderBase(BaseModel):
-    shipping_address_id: int
+    pass
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
-
-class Order(OrderBase):
+    shipping_details: Optional[OrderCreateAddress] = None
+    shipping_address_id: Optional[int] = None
     id: uuid.UUID
     user_id: uuid.UUID
     total_amount: Decimal
