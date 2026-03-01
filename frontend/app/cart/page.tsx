@@ -76,10 +76,15 @@ export default function CartPage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-slate-gray-light/20">
-                                <ShoppingCart className="w-16 h-16 text-slate-gray-light mx-auto mb-4 opacity-20" />
-                                <p className="text-slate-gray text-lg">{t('Votre panier est vide', 'Your cart is empty')}</p>
-                                <Link href="/" className="btn-primary mt-6 inline-flex">{t('Explorer le Catalogue', 'Explore Catalog')}</Link>
+                            <div className="text-center py-24 bg-white rounded-[3rem] border border-slate-gray-light/20 shadow-xl shadow-medical-blue/5">
+                                <div className="w-24 h-24 bg-slate-gray-light/10 text-medical-blue rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                                    <ShoppingCart className="w-10 h-10" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-gray-dark mb-3">{t('Votre panier est vide', 'Your cart is empty')}</h3>
+                                <p className="text-slate-gray font-medium mb-8 max-w-sm mx-auto">{t('Découvrez notre catalogue de consommables médicaux et de kits chirurgicaux pour votre clinique.', 'Discover our catalog of medical consumables and surgical kits for your clinic.')}</p>
+                                <Link href="/" className="inline-flex items-center justify-center px-10 py-5 bg-medical-blue hover:bg-medical-blue-dark active:bg-medical-blue transition-all rounded-2xl text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-medical-blue/20 hover:scale-105 active:scale-95">
+                                    {t('Parcourir le Catalogue', 'Browse Catalog')}
+                                </Link>
                             </div>
                         )}
                     </div>
