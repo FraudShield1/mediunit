@@ -4,12 +4,18 @@ import CategoryClient from './components/CategoryClient';
 export async function generateStaticParams() {
     try {
         const categories = await fetchCategories();
+        if (!categories || categories.length === 0) throw new Error("No categories fetched");
         return categories.map((category: any) => ({
             slug: category.slug,
         }));
     } catch (e) {
-        console.error("Failed to fetch static params for categories", e);
-        return [];
+        console.error("Failed to fetch static params for categories, using fallback", e);
+        return [
+            { slug: 'anesthesie' },
+            { slug: 'urologie' },
+            { slug: 'protection' },
+            { slug: 'bloc-operatoire' }
+        ];
     }
 }
 

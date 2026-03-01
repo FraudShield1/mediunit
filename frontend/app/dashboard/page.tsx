@@ -84,6 +84,7 @@ export default function UserDashboard() {
             items.forEach((item: any) => {
                 addItem({
                     id: item.product_id,
+                    productId: item.product_id,
                     name: item.product_name || "Produit réordonné",
                     sku: item.sku,
                     price: item.price_per_unit_at_purchase,

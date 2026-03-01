@@ -160,3 +160,35 @@ export async function fetchCompliancePack(orderId: string) {
     if (!res.ok) throw new Error('Failed to fetch compliance pack');
     return res.blob();
 }
+
+// Admin Product CRUD
+export async function createProduct(productData: any) {
+    const res = await fetch(`${API_URL}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(productData)
+    });
+    if (!res.ok) throw new Error('Failed to create product');
+    return res.json();
+}
+
+export async function updateProduct(productId: string, productData: any) {
+    const res = await fetch(`${API_URL}/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(productData)
+    });
+    if (!res.ok) throw new Error('Failed to update product');
+    return res.json();
+}
+
+export async function deleteProduct(productId: string) {
+    const res = await fetch(`${API_URL}/products/${productId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to delete product');
+    return res.json();
+}

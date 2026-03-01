@@ -16,7 +16,7 @@ function SuccessContent() {
         const token = localStorage.getItem('mediunit_token');
         if (!token) return;
         try {
-            const orderData = await fetchOrderInvoice(token, orderId);
+            const orderData = await fetchOrderInvoice(orderId);
             generateOrderInvoicePDF(orderData);
         } catch (error) {
             console.error(error);

@@ -4,6 +4,7 @@ import React from 'react';
 import { Package, Plus, ChevronRight, Activity, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { useCartStore } from '@/app/store/useCartStore';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 interface CategoryClientProps {
     slug: string;
@@ -12,6 +13,7 @@ interface CategoryClientProps {
 }
 
 export default function CategoryClient({ initialProducts, initialCategory }: CategoryClientProps) {
+    const { language, setLanguage, t } = useLanguageStore();
     const { items, addItem } = useCartStore();
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -19,6 +21,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
         e.preventDefault();
         addItem({
             id: product.id,
+            productId: product.id,
             name: product.name,
             sku: product.sku,
             price: product.base_unit_price || 0,
@@ -26,7 +29,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
             quantity: 1,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        alert(`${product.name} ajouté au panier !`);
+        alert(`${product.name} ${t('ajouté au panier !', 'added to cart!')}`);
     };
 
     return (
@@ -40,6 +43,21 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                         <span className="text-xl font-bold tracking-tight text-medical-blue-dark">MediUnit</span>
                     </Link>
                     <div className="flex items-center gap-4">
+                        {/* Language Switcher */}
+                        <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10">
+                            <button
+                                onClick={() => setLanguage('fr')}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'fr' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
+                            >
+                                FR
+                            </button>
+                            <button
+                                onClick={() => setLanguage('en')}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'en' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
+                            >
+                                EN
+                            </button>
+                        </div>
                         <Link href="/cart" className="p-2 relative text-slate-gray hover:text-medical-blue transition-colors">
                             <ShoppingCart className="w-6 h-6" />
                             {cartCount > 0 && (
@@ -55,9 +73,9 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
             <main className="max-w-7xl mx-auto px-4 py-12">
                 <div className="mb-12">
                     <nav className="flex items-center gap-2 text-xs font-bold text-slate-gray-light uppercase tracking-widest mb-4">
-                        <Link href="/" className="hover:text-medical-blue transition-colors">Accueil</Link>
+                        <Link href="/" className="hover:text-medical-blue transition-colors">{t('Accueil', 'Home')}</Link>
                         <ChevronRight className="w-3 h-3" />
-                        <span className="text-medical-blue">Catégories</span>
+                        <span className="text-medical-blue">{t('Catégories', 'Categories')}</span>
                     </nav>
                     <h1 className="text-4xl md:text-5xl font-black text-slate-gray-dark tracking-tight">
                         {initialCategory?.name || 'Fournitures'}
@@ -90,7 +108,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
 
                             <div className="w-full mt-auto pt-4 border-t border-slate-gray-light/10 flex items-center justify-between">
                                 <div className="text-left">
-                                    <p className="text-[10px] text-slate-gray font-bold uppercase tracking-tighter">Prix</p>
+                                    <p className="text-[10px] text-slate-gray font-bold uppercase tracking-tighter">{t('Prix', 'Price')}</p>
                                     <span className="font-black text-medical-blue text-lg">MAD {product.base_unit_price}</span>
                                 </div>
                                 <button

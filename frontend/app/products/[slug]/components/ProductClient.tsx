@@ -20,16 +20,56 @@ import Footer from '@/app/components/Footer';
 import BottomNav from '@/app/components/BottomNav';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useAuthStore } from '@/app/store/useAuthStore';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 import ComplianceGateModal from '@/app/components/ComplianceGateModal';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default function ProductClient({ slug, initialData }: { slug: string, initialData?: any }) {
+    const { language, setLanguage, t } = useLanguageStore();
     const [product, setProduct] = useState<any>(initialData || null);
     const [loading, setLoading] = useState(!initialData);
     const [quantity, setQuantity] = useState(1);
+    const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [isGateOpen, setIsGateOpen] = useState(false);
     const [gatedDocType, setGatedDocType] = useState('');
+
+    // Parse dynamic specs to find variants (Taille, Size, etc.)
+    let dynamicSpecs: any = {};
+    try {
+        dynamicSpecs = typeof product?.specifications === 'string'
+            ? JSON.parse(product.specifications)
+            : (product?.specifications || {});
+    } catch (e) {
+        console.error("Spec parse error", e);
+    }
+
+    const variantKey = ['Taille', 'Size', 'Type', 'Variante', 'Gauge', 'Dimensions', 'Diamètre', 'Options'].find(key => dynamicSpecs[key]);
+    let variantData = variantKey ? dynamicSpecs[variantKey] : '';
+
+    // Attempt to extract from "Caractéristiques" if it contains sizes (e.g. "18G à 25G")
+    if (!variantData && dynamicSpecs['Caractéristiques']) {
+        const chars = String(dynamicSpecs['Caractéristiques']);
+        if (chars.includes(' à ') && (chars.includes('G') || chars.includes('mm') || chars.includes('cm') || chars.includes('CH'))) {
+            // We can't automatically generate the range easily without knowing step size, so we leave it, or we could split by ';' and find the one with ' à '
+        }
+    }
+
+    let variants: string[] = [];
+    if (typeof variantData === 'string') {
+        if (variantData.includes(',')) variants = variantData.split(',').map(v => v.trim());
+        else if (variantData.includes(';')) variants = variantData.split(';').map(v => v.trim());
+        else if (variantData.includes('/')) variants = variantData.split('/').map(v => v.trim());
+        else if (variantData.trim().length > 0) variants = [variantData.trim()];
+    } else if (Array.isArray(variantData)) {
+        variants = variantData.map(v => String(v));
+    }
+
+    useEffect(() => {
+        if (variants.length > 0 && !selectedVariant) {
+            setSelectedVariant(variants[0]);
+        }
+    }, [variants, selectedVariant]);
 
     const { addItem } = useCartStore();
     const { isLoggedIn } = useAuthStore();
@@ -52,22 +92,24 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
     };
 
     const addToCart = () => {
+        const displayName = selectedVariant ? `${product.name} (${selectedVariant})` : product.name;
         addItem({
-            id: product.id,
-            name: product.name,
+            id: product.id + (selectedVariant || ''),
+            productId: product.id,
+            name: displayName,
             sku: product.sku,
             price: product.base_unit_price * (1 - getDiscountInfo(quantity).discount) || 0,
             basePrice: product.base_unit_price,
             quantity: quantity,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        alert(`${quantity}x ${product.name} (${product.packaging_type || 'Unité'}) ajouté(s) au panier !`);
+        alert(`${quantity}x ${displayName} (${product.packaging_type || 'Unité'}) ${t('ajouté(s) au panier !', 'added to cart!')}`);
     };
 
     const getDiscountInfo = (qty: number) => {
-        if (qty >= 50) return { discount: 0.20, message: "Remise 20% appliquée ! 🎉" };
-        if (qty >= 10) return { discount: 0.10, message: `Remise 10% appliquée. Ajoutez ${50 - qty} pour 20% !` };
-        return { discount: 0, message: `💡 Ajoutez ${10 - qty} pour 10% de remise au volume!` };
+        if (qty >= 50) return { discount: 0.20, message: t("Remise 20% appliquée ! 🎉", "20% discount applied! 🎉") };
+        if (qty >= 10) return { discount: 0.10, message: t(`Remise 10% appliquée. Ajoutez ${50 - qty} pour 20% !`, `10% discount applied. Add ${50 - qty} for 20%!`) };
+        return { discount: 0, message: t(`💡 Ajoutez ${10 - qty} pour 10% de remise au volume!`, `💡 Add ${10 - qty} for 10% volume discount!`) };
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-clinic-white">
@@ -89,6 +131,21 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                         <ArrowLeft className="w-6 h-6" />
                     </Link>
                     <div className="flex items-center gap-4">
+                        {/* Language Switcher */}
+                        <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10">
+                            <button
+                                onClick={() => setLanguage('fr')}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'fr' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
+                            >
+                                FR
+                            </button>
+                            <button
+                                onClick={() => setLanguage('en')}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'en' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
+                            >
+                                EN
+                            </button>
+                        </div>
                         <Link href="/cart" className="relative text-slate-gray hover:text-medical-blue transition-colors rounded-full" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ShoppingCart className="w-6 h-6" />
                         </Link>
@@ -99,9 +156,9 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
             <main className="max-w-7xl mx-auto px-4 py-8 md:py-16">
                 {/* Professional B2B Breadcrumbs */}
                 <nav className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-gray mb-8">
-                    <Link href="/" className="hover:text-medical-blue transition-colors">Accueil</Link>
+                    <Link href="/" className="hover:text-medical-blue transition-colors">{t('Accueil', 'Home')}</Link>
                     <ChevronRight className="w-3 h-3 text-slate-gray-light" />
-                    <Link href="/catalogue" className="hover:text-medical-blue transition-colors">Catalogue</Link>
+                    <Link href="/catalogue" className="hover:text-medical-blue transition-colors">{t('Catalogue', 'Catalog')}</Link>
                     {product.category && (
                         <>
                             <ChevronRight className="w-3 h-3 text-slate-gray-light" />
@@ -135,15 +192,15 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                         <div className="grid grid-cols-3 gap-4">
                             <div className="bg-white p-4 rounded-3xl border border-slate-gray-light/10 flex flex-col items-center gap-2 text-center">
                                 <ShieldCheck className="text-medical-blue w-6 h-6" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">Certifié CE</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">{t('Certifié CE', 'CE Certified')}</span>
                             </div>
                             <div className="bg-white p-4 rounded-3xl border border-slate-gray-light/10 flex flex-col items-center gap-2 text-center">
                                 <CheckCircle2 className="text-sage-green w-6 h-6" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">Stérile</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">{t('Stérile', 'Sterile')}</span>
                             </div>
                             <div className="bg-white p-4 rounded-3xl border border-slate-gray-light/10 flex flex-col items-center gap-2 text-center text-red-500">
                                 <Activity className="w-6 h-6" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">Usage Unique</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-gray">{t('Usage Unique', 'Single Use')}</span>
                             </div>
                         </div>
                     </div>
@@ -152,27 +209,49 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                     <div className="flex flex-col">
                         <div className="mb-2">
                             <span className="px-3 py-1 bg-medical-blue/10 text-medical-blue text-[10px] font-black rounded-full uppercase tracking-wider">
-                                {product.category?.name || 'Fourniture Médicale'}
+                                {product.category_name || product.category?.name || 'Fourniture Médicale'}
                             </span>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark mb-4 leading-tight">
                             {product.name}
                         </h1>
                         <div className="flex items-center gap-4 mb-8">
-                            <p className="text-slate-gray-dark/40 font-mono text-sm uppercase tracking-widest">SKU: {product.sku}</p>
-                            {product.brand && (
-                                <span className="text-xs font-bold text-medical-blue bg-medical-blue/5 px-2 py-0.5 rounded-full ring-1 ring-medical-blue/10">
-                                    Marque: {product.brand}
+                            <p className="text-slate-gray-dark/40 font-mono text-sm uppercase tracking-widest">
+                                SKU: {selectedVariant ? `${product.sku}-${selectedVariant.replace(/[^a-zA-Z0-9]/g, '')}` : product.sku}
+                            </p>
+                            {(product.brand_entity?.name || product.brand) && (
+                                <span className="text-[10px] font-black text-medical-blue bg-medical-blue/5 px-2 py-1 rounded-full ring-1 ring-medical-blue/10 uppercase tracking-widest">
+                                    {product.brand_entity?.name || product.brand}
                                 </span>
                             )}
                         </div>
 
-                        <div className="mb-12 bg-white rounded-[2rem] p-8 border border-slate-gray-light/10 shadow-sm">
+                        <div className="mb-12 bg-white rounded-[2rem] p-8 border border-slate-gray-light/10 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-medical-blue/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-gray-light mb-6">Tarification Professionnelle</h3>
-                            <div className="flex items-baseline gap-2 mb-4">
+                            <div className="flex items-baseline gap-2 mb-6">
                                 <span className="text-5xl font-black text-medical-blue">MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount)).toFixed(2)}</span>
                                 <span className="text-lg text-slate-gray font-bold uppercase tracking-tighter">/ {product.packaging_type}</span>
                             </div>
+
+                            {/* Variant Selection (If Multi-Size) */}
+                            {variants.length > 0 && (
+                                <div className="mb-8 p-4 bg-slate-gray-light/5 rounded-2xl border border-dashed border-slate-gray-light/20">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray mb-3 pb-2 border-b border-slate-gray-light/10">Sélectionner la Taille / Variante</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {variants.map((v) => (
+                                            <button
+                                                key={v}
+                                                onClick={() => setSelectedVariant(v)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${selectedVariant === v ? 'bg-medical-blue text-white shadow-lg shadow-medical-blue/20 scale-105' : 'bg-white text-slate-gray border border-slate-gray-light/20 hover:border-medical-blue'}`}
+                                            >
+                                                {v}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Tiered Pricing Upsell */}
                             <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-3 ${getDiscountInfo(quantity).discount > 0 ? 'bg-sage-green/10 border-sage-green/20 text-sage-green-dark' : 'bg-medical-blue/5 border-medical-blue/10 text-medical-blue'}`}>
@@ -206,7 +285,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                     onClick={addToCart}
                                     className="flex-1 btn-primary h-14 text-lg relative group shadow-xl shadow-medical-blue/20 hover:shadow-medical-blue/40 transition-all font-black"
                                 >
-                                    <span>AJOUTER AU PANIER - MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount) * quantity).toFixed(2)}</span>
+                                    <span>{t('AJOUTER AU PANIER', 'ADD TO CART')} - MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount) * quantity).toFixed(2)}</span>
                                 </button>
                             </div>
                         </div>
@@ -215,27 +294,37 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                         <div className="bg-slate-gray-light/5 rounded-[2.5rem] p-8 border border-slate-gray-light/10">
                             <h4 className="font-bold text-slate-gray-dark mb-6 flex items-center gap-2 uppercase tracking-widest text-xs">
                                 <Download className="w-4 h-4 text-medical-blue" />
-                                Conformité & Fiches Techniques
+                                {t('Conformité & Fiches Techniques', 'Compliance & Data Sheets')}
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => handleDownload('Certificat CE', product.ce_cert_url)}
-                                    className="bg-white p-5 h-16 rounded-2xl border border-slate-gray-light/10 flex items-center justify-between group hover:border-medical-blue transition-all disabled:opacity-50"
-                                    disabled={!product.ce_cert_url}
+                                <a
+                                    href={product.ce_cert_url || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                        if (!isLoggedIn) {
+                                            e.preventDefault();
+                                            setGatedDocType('Certificat CE');
+                                            setIsGateOpen(true);
+                                        }
+                                    }}
+                                    className={`bg-white p-5 h-16 rounded-2xl border border-slate-gray-light/10 flex items-center justify-between group hover:border-medical-blue transition-all cursor-pointer`}
                                 >
                                     <div className="flex flex-col text-left">
-                                        <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">Certificat CE</span>
-                                        <span className="text-[10px] text-slate-gray">Format PDF (1.2 MB)</span>
+                                        <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">{t('Certificat CE', 'CE Certificate')}</span>
+                                        <span className="text-[10px] text-slate-gray">
+                                            {product.brand_entity?.manufacturer ? `${t('Par', 'By')} ${product.brand_entity.manufacturer}` : t('Document Officiel', 'Official Document')}
+                                        </span>
                                     </div>
-                                    <FileText className="w-5 h-5 text-medical-blue group-hover:scale-110 transition-transform" />
-                                </button>
+                                    <ShieldCheck className="w-5 h-5 text-medical-blue group-hover:scale-110 transition-transform" />
+                                </a>
                                 <button
                                     onClick={() => handleDownload('Fiche Technique', product.tech_sheet_url)}
                                     className="bg-white p-5 h-16 rounded-2xl border border-slate-gray-light/10 flex items-center justify-between group hover:border-medical-blue transition-all"
                                 >
                                     <div className="flex flex-col text-left">
-                                        <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">Fiche Technique</span>
-                                        <span className="text-[10px] text-slate-gray">Généré par MediUnit</span>
+                                        <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">{t('Fiche Technique', 'Technical Sheet')}</span>
+                                        <span className="text-[10px] text-slate-gray">{t('Généré par MediUnit', 'Generated by MediUnit')}</span>
                                     </div>
                                     <Download className="w-5 h-5 text-medical-blue group-hover:scale-110 transition-transform" />
                                 </button>
@@ -247,67 +336,66 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                 {/* Structured Specs Table */}
                 <div className="mt-24 grid grid-cols-1 lg:grid-cols-3 gap-16 border-t border-slate-gray-light/10 pt-16">
                     <div className="lg:col-span-2">
-                        <h3 className="text-2xl font-black text-slate-gray-dark mb-8 tracking-tight">Description Clinique</h3>
+                        <h3 className="text-2xl font-black text-slate-gray-dark mb-8 tracking-tight">{t('Description Clinique', 'Clinical Description')}</h3>
                         <div className="text-slate-gray leading-relaxed text-lg font-medium mb-12 clinical-description prose prose-slate max-w-none">
-                            <div dangerouslySetInnerHTML={{ __html: product.description || '' }} />
+                            <div dangerouslySetInnerHTML={{
+                                __html: (product.description || '').replace(/<table[\s\S]*?<\/table>/gi, '')
+                            }} />
                         </div>
 
                         <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-slate-gray-light/10 shadow-xl shadow-medical-blue/5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                                 {(() => {
-                                    const dynamicSpecs = (() => {
-                                        try {
-                                            return product.specifications ? JSON.parse(product.specifications) : {};
-                                        } catch (e) {
-                                            return {};
-                                        }
-                                    })();
+                                    let dynamicSpecs = {};
+                                    try {
+                                        dynamicSpecs = typeof product.specifications === 'string'
+                                            ? JSON.parse(product.specifications)
+                                            : (product.specifications || {});
+                                    } catch (e) {
+                                        console.error("Spec parse error", e);
+                                    }
 
                                     const specList = [
                                         { label: 'Conditionnement', value: product.packaging_type },
                                         { label: 'Référence SKU', value: product.sku },
-                                        { label: 'Marque Professionnelle', value: product.brand_entity?.name || product.brand || 'MediUnit Clinical' },
+                                        { label: 'Marque', value: product.brand_entity?.name || product.brand },
                                         { label: 'Fabricant', value: product.brand_entity?.manufacturer },
-                                        // Merge dynamic specs from DB
-                                        ...Object.entries(dynamicSpecs).map(([key, value]) => ({
-                                            label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
-                                            value: String(value)
-                                        }))
+                                        // Merge dynamic specs, filtering out common keys
+                                        ...Object.entries(dynamicSpecs)
+                                            .filter(([k]) => !['marque', 'brand', 'fabricant', 'manufacturer', 'sku', 'packaging', 'conditionnement'].includes(k.toLowerCase()))
+                                            .map(([key, value]) => ({
+                                                label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+                                                value: Array.isArray(value) ? value.join(', ') : String(value)
+                                            }))
                                     ];
 
-                                    return specList.filter(s => s.value).map((spec, i) => (
+                                    return specList.filter(s => s.value && String(s.value).trim() !== '').map((spec, i) => (
                                         <div key={i} className="flex justify-between items-center py-4 border-b border-slate-gray-light/10 font-sans">
-                                            <span className="text-sm font-bold text-slate-gray tracking-tight uppercase">{spec.label}</span>
-                                            <span className="text-sm font-black text-slate-gray-dark">{spec.value}</span>
+                                            <span className="text-xs font-black text-slate-gray tracking-widest uppercase">{spec.label}</span>
+                                            <span className="text-sm font-black text-slate-gray-dark text-right ml-4">{spec.value}</span>
                                         </div>
                                     ));
                                 })()}
                             </div>
-                            {product.specifications && (
-                                <div className="mt-12 p-6 bg-clinic-white rounded-2xl border border-slate-gray-light/10 text-xs text-slate-gray leading-relaxed font-medium">
-                                    <p className="uppercase font-black mb-2 tracking-widest text-slate-gray-dark">Informations Complémentaires :</p>
-                                    {product.specifications}
-                                </div>
-                            )}
                         </div>
                     </div>
 
                     <div className="space-y-8">
                         <div className="bg-medical-blue rounded-[2.5rem] p-8 text-white shadow-2xl shadow-medical-blue/30">
                             <Truck className="w-10 h-10 mb-6 text-white/50" />
-                            <h3 className="text-xl font-black mb-4 uppercase tracking-tight">Logistique B2B</h3>
+                            <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{t('Logistique B2B', 'B2B Logistics')}</h3>
                             <ul className="space-y-4">
                                 <li className="flex items-start gap-3 text-sm font-bold">
                                     <div className="w-1.5 h-1.5 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                                    <span>Livraison 24h sur Casablanca & Environs</span>
+                                    <span>{t('Livraison 24h sur Casablanca & Environs', '24h Delivery in Casablanca & Surroundings')}</span>
                                 </li>
                                 <li className="flex items-start gap-3 text-sm font-bold">
                                     <div className="w-1.5 h-1.5 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                                    <span>Expédition Maroc (48h-72h)</span>
+                                    <span>{t('Expédition Maroc (48h-72h)', 'Morocco Shipping (48h-72h)')}</span>
                                 </li>
                                 <li className="flex items-start gap-3 text-sm font-bold">
                                     <div className="w-1.5 h-1.5 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                                    <span>Facturation certifiée pour comptabilité clinique</span>
+                                    <span>{t('Facturation certifiée pour comptabilité clinique', 'Certified invoicing for clinical accounting')}</span>
                                 </li>
                             </ul>
                         </div>
@@ -316,9 +404,9 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                             <div className="w-16 h-16 bg-medical-blue/5 rounded-full flex items-center justify-center mb-4">
                                 <ShieldCheck className="w-8 h-8 text-medical-blue" />
                             </div>
-                            <h4 className="font-black text-slate-gray-dark mb-2 uppercase tracking-tight">Standard MediUnit</h4>
+                            <h4 className="font-black text-slate-gray-dark mb-2 uppercase tracking-tight">{t('Standard MediUnit', 'MediUnit Standard')}</h4>
                             <p className="text-xs text-slate-gray font-medium leading-relaxed">
-                                Chaque produit est rigoureusement sélectionné pour répondre aux exigences des plateaux techniques marocains.
+                                {t('Chaque produit est rigoureusement sélectionné pour répondre aux exigences des plateaux techniques marocains.', 'Each product is rigorously selected to meet the requirements of Moroccan technical platforms.')}
                             </p>
                         </div>
                     </div>

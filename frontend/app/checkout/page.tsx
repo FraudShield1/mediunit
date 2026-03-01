@@ -36,24 +36,18 @@ export default function CheckoutPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = localStorage.getItem('mediunit_token');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
             const orderData = {
                 shipping_address_id: 1, // Hardcoded for demo
                 items: cartItems.map(item => ({
-                    product_id: item.id,
+                    product_id: item.productId || item.id,
                     quantity: item.quantity
                 }))
             };
 
-            const order = await createOrder(token, orderData);
+            const order = await createOrder(orderData);
             localStorage.removeItem('mediunit_cart');
             window.dispatchEvent(new Event('cart_updated'));
             router.push(`/checkout/success?order_id=${order.id}`);

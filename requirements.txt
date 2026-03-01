@@ -1,4 +1,1 @@
-fastapi
-pydantic
-pydantic-settings
-python-multipart
+# No extra requirements needed for minimal worker

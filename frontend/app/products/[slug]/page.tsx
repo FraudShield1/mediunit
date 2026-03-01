@@ -23,12 +23,18 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export async function generateStaticParams() {
     try {
         const products = await fetchProducts();
+        if (!products || products.length === 0) throw new Error("No products fetched");
         return products.map((product: any) => ({
             slug: product.slug,
         }));
     } catch (e) {
-        console.error("Failed to fetch static params for products", e);
-        return [];
+        console.error("Failed to fetch static params for products, using fallback", e);
+        // Fallback for critical pages to avoid build failure
+        return [
+            { slug: 'speculum-auriculaire-greatcare' },
+            { slug: 'seringue-luer-slip-3-pieces' },
+            { slug: 'aiguille-de-rachianesthesie-pointe-crayon' }
+        ];
     }
 }
 
