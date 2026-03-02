@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe } from 'lucide-react';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
@@ -115,9 +116,9 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                             className="px-8 py-4 hover:bg-medical-blue/5 flex items-center justify-between group transition-colors"
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-slate-gray-light/10 rounded-xl flex items-center justify-center overflow-hidden">
+                                                <div className="w-10 h-10 bg-slate-gray-light/10 rounded-xl flex items-center justify-center overflow-hidden relative">
                                                     {product.image_url ? (
-                                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                                        <Image src={product.image_url} alt={product.name} fill className="object-cover" />
                                                     ) : (
                                                         <Package className="w-5 h-5 text-slate-gray-light" />
                                                     )}
@@ -134,8 +135,12 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                         </Link>
                                     ))
                                 ) : (
-                                    <div className="px-8 py-6 text-center text-slate-gray font-medium">
-                                        {t(`Aucun produit trouvé pour "${searchQuery}"`, `No product found for "${searchQuery}"`)}
+                                    <div className="px-8 py-10 text-center">
+                                        <div className="w-12 h-12 bg-slate-gray-light/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <Search className="w-6 h-6 text-slate-gray-light" />
+                                        </div>
+                                        <p className="text-slate-gray font-bold">{t(`Aucun produit trouvé pour "${searchQuery}"`, `No product found for "${searchQuery}"`)}</p>
+                                        <p className="text-[10px] text-slate-gray-light uppercase tracking-widest mt-1">{t('Essayez d\'autres termes ou vérifiez l\'orthographe', 'Try different keywords or check spelling')}</p>
                                     </div>
                                 )}
                             </div>
@@ -181,11 +186,18 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                         {filteredProducts.map((product) => (
                             <div key={product.id} className="card p-5 group flex flex-col items-center text-center bg-white rounded-[2rem] border border-slate-gray-light/10 shadow-sm hover:shadow-xl transition-all duration-300">
                                 <Link href={`/products/${product.slug}`} className="w-full">
-                                    <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 flex items-center justify-center group-hover:bg-medical-blue-light/30 transition-all duration-500 overflow-hidden relative border border-slate-gray-light/5">
+                                    <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 group-hover:bg-medical-blue-light/30 transition-all duration-500 overflow-hidden relative border border-slate-gray-light/5">
                                         {product.image_url && product.image_url !== "/" ? (
-                                            <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500" />
+                                            <Image
+                                                src={product.image_url}
+                                                alt={product.name}
+                                                fill
+                                                className="object-contain p-6 group-hover:scale-110 transition-transform duration-500"
+                                            />
                                         ) : (
-                                            <Package className="text-slate-gray-light w-12 h-12 group-hover:text-medical-blue group-hover:scale-110 transition-all duration-500" />
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <Package className="text-slate-gray-light w-12 h-12 group-hover:text-medical-blue group-hover:scale-110 transition-all duration-500" />
+                                            </div>
                                         )}
                                         <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm border border-sage-green/10">
                                             <div className="w-1.5 h-1.5 rounded-full bg-sage-green animate-pulse"></div>

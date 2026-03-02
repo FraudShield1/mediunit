@@ -1,19 +1,47 @@
-# PRD File 7: DevOps & Configuration
+# PRD 7: DevOps & Configuration (Cloudflare Ecosystem)
 
-## 1. Docker Compose Architecture
-* The system will run via a root `docker-compose.yml` defining four distinct services:
-    1.  `frontend`: Builds the Next.js app (exposed on port 3000).
-    2.  `backend`: Builds the FastAPI app using Uvicorn (exposed on port 8000).
-    3.  `postgres`: Uses the official `postgres:15-alpine` image.
-    4.  `redis`: Uses the official `redis:alpine` image.
+This project has migrated entirely off Docker/PostgreSQL to a 100% serverless edge architecture using the **Cloudflare Stack**.
 
-## 2. Environment Variables (.env)
-The LLM must generate a `.env.example` file that handles the separation of operations and administration.
-* **System:** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `FRONTEND_URL`.
-* **Logistics (Morocco):** `OPERATIONS_CITY="Casablanca"`, `DELIVERY_RADIUS_KM="50"`.
-* **Administration (Portugal):** `OFFICIAL_CORRESPONDENCE_ADDRESS="[Insert exact Lisbon Address here]"`, `LEGAL_ENTITY_COUNTRY="Portugal"`. (This ensures the generated PDF invoices correctly route legal and administrative correspondence to your Lisbon entity, separate from Casa operations).
+## 1. Cloudflare Pages (Frontend)
+The Next.js 14 application is compiled as a static export (`next build` with `output: "export"`) and pushed to the Cloudflare Global Network.
 
-## 3. CI/CD & Code Quality
-* **Backend Linting:** The LLM must configure `Ruff` or `Flake8` for strict Python linting.
-* **Database Migrations:** Include `Alembic` configurations in the Python container to automatically track and apply PostgreSQL schema updates.
-* **Logging:** Configure FastAPI to output JSON-formatted logs to standard output (stdout) so Docker can easily capture API errors for debugging.
+*   **Production URL:** `https://mediunit-frontend.pages.dev`
+*   **Build Command:** `npm run build`
+*   **Wrangler Deployment (Manual Bypass):**
+    If the GitHub integration hangs or serves stale cache due to routing issues, you can forcefully deploy your local `./out` folder via Wrangler.
+    ```bash
+    npx wrangler pages deploy out --project-name=mediunit-frontend --branch=production
+    ```
+*   **Environment Variables:** Configured natively in the Cloudflare Pages Dashboard under Settings > Environment Variables. `NEXT_PUBLIC_API_URL` must point to the backend worker.
+
+## 2. Cloudflare Workers (Backend)
+The entire backend operates on a single `worker.js` file leveraging the V8 Engine at the Edge.
+
+*   **Production URL:** `https://mediunit-backend.a-naouri.workers.dev`
+*   **Configuration:** `wrangler.toml` controls the binding of the D1 Database and R2 Buckets (if applicable).
+*   **Wrangler Deployment:**
+    ```bash
+    npx wrangler deploy
+    ```
+
+## 3. Database Updates (D1)
+Cloudflare D1 is a serverless SQLite database. You should never edit production data directly without testing locally or using migrations.
+
+1.  **Generate a Migration:**
+    ```bash
+    npx wrangler d1 migrations create mediunit-db "add_new_table"
+    ```
+2.  **Edit the `.sql` file** in `./migrations`.
+3.  **Apply Locally:**
+    ```bash
+    npx wrangler d1 migrations apply mediunit-db --local
+    ```
+4.  **Apply to Production:**
+    ```bash
+    npx wrangler d1 migrations apply mediunit-db --remote
+    ```
+
+## 4. Environment Variables (`wrangler.toml` / `.env`)
+The operations logic relies on strict environment variable separation for local vs. production.
+*   **Frontend:** Needs `NEXT_PUBLIC_API_URL`.
+*   **Worker:** Native D1 binding via `[[d1_databases]]` in `wrangler.toml`. JWT Secrets and operations logic (e.g., `OPERATIONS_CITY="Casablanca"`) are set via `wrangler secret put` or the Cloudflare Dashboard.

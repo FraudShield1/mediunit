@@ -49,11 +49,33 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         console.error("Error loading category server-side:", error);
     }
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        itemListElement: products.map((product: any, index: number) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            item: {
+                '@type': 'Product',
+                url: `https://mediunit-frontend.pages.dev/products/${product.slug}`,
+                name: product.name,
+                image: product.image_url,
+                sku: product.sku,
+            }
+        }))
+    };
+
     return (
-        <CategoryClient
-            slug={params.slug}
-            initialProducts={products}
-            initialCategory={category}
-        />
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <CategoryClient
+                slug={params.slug}
+                initialProducts={products}
+                initialCategory={category}
+            />
+        </>
     );
 }

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Package, Plus, ChevronRight, Activity, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import { toast } from 'react-hot-toast';
@@ -87,18 +88,18 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                     {initialProducts.map((product) => (
                         <div key={product.id} className="card p-5 group flex flex-col items-center text-center bg-white rounded-[2rem] border border-slate-gray-light/10 shadow-sm hover:shadow-xl transition-all">
                             <Link href={`/products/${product.slug}`} className="w-full">
-                                <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 flex items-center justify-center group-hover:bg-medical-blue-light/30 transition-all duration-500 overflow-hidden relative">
+                                <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 overflow-hidden relative border border-slate-gray-light/5 group-hover:bg-medical-blue-light/30 transition-all duration-500">
                                     {product.image_url && product.image_url !== "/" ? (
-                                        <img
+                                        <Image
                                             src={product.image_url}
                                             alt={product.name}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500"
-                                            onError={(e) => {
-                                                (e.target as any).src = "https://via.placeholder.com/300?text=Medical+Supply";
-                                            }}
+                                            fill
+                                            className="object-cover group-hover:scale-110 transition-all duration-500"
                                         />
                                     ) : (
-                                        <Package className="text-slate-gray-light w-12 h-12 group-hover:text-medical-blue group-hover:scale-110 transition-all duration-500" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Package className="text-slate-gray-light w-12 h-12 group-hover:text-medical-blue group-hover:scale-110 transition-all duration-500" />
+                                        </div>
                                     )}
                                 </div>
                                 <h4 className="font-bold text-slate-gray-dark mb-1 line-clamp-2 h-10 overflow-hidden text-sm uppercase px-2">

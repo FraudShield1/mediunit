@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Truck, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createOrder } from '@/app/lib/api';
 import { toast } from 'react-hot-toast';
@@ -153,8 +154,8 @@ export default function CheckoutPage() {
                                     const itemPrice = item.basePrice ? getDiscountedPrice(item.basePrice, item.quantity) : item.price;
                                     return (
                                         <div key={item.id} className="flex gap-4 items-center">
-                                            <div className="w-16 h-16 bg-slate-gray-light/5 rounded-xl overflow-hidden flex-shrink-0">
-                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                            <div className="w-16 h-16 bg-slate-gray-light/5 rounded-xl overflow-hidden flex-shrink-0 relative">
+                                                <Image src={item.image} alt={item.name} fill className="object-cover" />
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="text-sm font-bold text-slate-gray-dark line-clamp-1">{item.name}</h4>

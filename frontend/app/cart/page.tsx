@@ -3,6 +3,7 @@
 import React from 'react';
 import { ShoppingCart, ArrowLeft, Trash2, Plus, Minus, ShieldCheck, Truck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 
@@ -50,8 +51,8 @@ export default function CartPage() {
                         {items.length > 0 ? (
                             items.map((item) => (
                                 <div key={item.id} className="bg-white rounded-3xl p-6 shadow-xl shadow-medical-blue/5 border border-slate-gray-light/10 flex flex-col md:flex-row gap-6 items-center">
-                                    <div className="w-24 h-24 bg-slate-gray-light/5 rounded-2xl overflow-hidden flex-shrink-0">
-                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                    <div className="w-24 h-24 bg-slate-gray-light/5 rounded-2xl overflow-hidden flex-shrink-0 relative">
+                                        <Image src={item.image} alt={item.name} fill className="object-cover" />
                                     </div>
                                     <div className="flex-1 text-center md:text-left">
                                         <h3 className="font-bold text-slate-gray-dark leading-tight mb-1">{item.name}</h3>

@@ -26,9 +26,9 @@ export default async function LandingPage() {
         '@context': 'https://schema.org',
         '@type': 'MedicalBusiness',
         name: 'MediUnit',
-        image: 'https://82ddae46.mediunit-frontend.pages.dev/icons/icon-512x512.png',
-        '@id': 'https://82ddae46.mediunit-frontend.pages.dev',
-        url: 'https://82ddae46.mediunit-frontend.pages.dev',
+        image: 'https://mediunit-frontend.pages.dev/apple-touch-icon.png',
+        '@id': 'https://mediunit-frontend.pages.dev',
+        url: 'https://mediunit-frontend.pages.dev',
         telephone: '+212-522-XXXXXX',
         address: {
             '@type': 'PostalAddress',
