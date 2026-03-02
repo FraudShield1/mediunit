@@ -34,11 +34,11 @@ export default function Footer() {
                     <div className="space-y-4">
                         <h4 className="font-bold text-slate-gray-dark flex items-center gap-2">
                             <Globe className="w-5 h-5 text-medical-blue" />
-                            {t('Siège Administratif', 'Administrative Headquarters')}
+                            {t('Contact & Support', 'Contact & Support')}
                         </h4>
                         <p className="text-xs text-slate-gray">
-                            Avenida da Liberdade 110<br />
-                            1269-046 Lisboa, Portugal<br />
+                            Email: <a href="mailto:abdel@mediunit.ma" className="text-medical-blue hover:underline">abdel@mediunit.ma</a><br />
+                            Avenida da Liberdade 110, Lisboa<br />
                             Corporate Correspondence & Legal Affairs.
                         </p>
                     </div>

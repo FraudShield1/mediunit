@@ -105,4 +105,8 @@ npx wrangler deploy
 - **Certifications:** Strict gating function requiring authenticated user status (INPE validation logic) before releasing manufacturer **CE Certificates**.
 
 ---
+## 📧 Contact
+For business inquiries or technical support, contact **Abdel** at: [abdel@mediunit.ma](mailto:abdel@mediunit.ma)
+
+---
 *Built with precision for the Moroccan Medical B2B sector.*
