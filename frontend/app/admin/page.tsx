@@ -6,8 +6,17 @@ import {
     CheckCircle2, Clock, Package, ChevronDown, Plus, Edit2, Trash2, X, FileText
 } from 'lucide-react';
 import {
-    fetchAdminOrders, fetchAdminUsers, updateOrderStatus, verifyUser,
-    fetchProducts, createProduct, updateProduct, deleteProduct
+    fetchAdminOrders,
+    fetchAdminUsers,
+    fetchProducts,
+    updateOrderStatus,
+    verifyUser,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    fetchCategories,
+    fetchBrands,
+    fetchAdminStats
 } from '@/app/lib/api';
 import { toast } from 'react-hot-toast';
 
@@ -17,14 +26,20 @@ export default function AdminDashboard() {
     const [orders, setOrders] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [brands, setBrands] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [searchTerm, setSearchTerm] = useState('');
+    const [dashboardStats, setDashboardStats] = useState<any>({ count: 0, total: 0 });
 
     // Product Modal State
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
     const [productForm, setProductForm] = useState<any>({ name: '', sku: '', base_unit_price: 0, stock: 100, description: '', image_url: '', category_id: 1, brand_id: 1, specifications: '{}', packaging_type: 'Unité' });
+
+    // Order View State
+    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
     useEffect(() => {
         loadAdminData();
@@ -34,16 +49,20 @@ export default function AdminDashboard() {
         setLoading(true);
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('mediunit_token') : null;
-            if (token) {
-                const [ordersData, usersData, productsData] = await Promise.all([
-                    fetchAdminOrders(),
-                    fetchAdminUsers(),
-                    fetchProducts() // Gets up to 100 for admin view
-                ]);
-                setOrders(ordersData);
-                setUsers(usersData);
-                setProducts(productsData.data || productsData.items || productsData);
-            }
+            const [ordersData, usersData, productsData, categoriesData, brandsData, statsData] = await Promise.all([
+                fetchAdminOrders(),
+                fetchAdminUsers(),
+                fetchProducts(),
+                fetchCategories(),
+                fetchBrands(),
+                fetchAdminStats()
+            ]);
+            setOrders(ordersData);
+            setUsers(usersData);
+            setProducts(productsData.data || productsData.items || productsData);
+            setCategories(categoriesData);
+            setBrands(brandsData);
+            setDashboardStats(statsData.stats || { count: 0, total: 0 });
         } catch (error) {
             console.error("Failed to load admin data:", error);
         } finally {
@@ -84,14 +103,19 @@ export default function AdminDashboard() {
                 stock: product.stock || 0,
                 description: product.description || '',
                 image_url: product.image_url || '',
-                category_id: product.category_id || 1,
-                brand_id: product.brand_id || 1,
-                specifications: product.specifications || '{}',
+                category_id: product.category_id || (categories[0]?.id || 1),
+                brand_id: product.brand_id || (brands[0]?.id || 1),
+                specifications: typeof product.specifications === 'string' ? product.specifications : JSON.stringify(product.specifications, null, 2),
                 packaging_type: product.packaging_type || 'Unité'
             });
         } else {
             setEditingProduct(null);
-            setProductForm({ name: '', sku: '', base_unit_price: 0, stock: 100, description: '', image_url: '', category_id: 1, brand_id: 1, specifications: '{}', packaging_type: 'Unité' });
+            setProductForm({
+                name: '', sku: '', base_unit_price: 0, stock: 100, description: '', image_url: '',
+                category_id: categories[0]?.id || 1,
+                brand_id: brands[0]?.id || 1,
+                specifications: '{}', packaging_type: 'Unité'
+            });
         }
         setIsProductModalOpen(true);
     };
@@ -109,7 +133,6 @@ export default function AdminDashboard() {
             }
             setIsProductModalOpen(false);
             const productsData = await fetchProducts();
-            // Account for pagination metadata `{ data: [...] }` if returned
             setProducts(productsData.data || productsData.items || productsData);
         } catch (error) {
             toast.error("Error saving product.");
@@ -130,10 +153,10 @@ export default function AdminDashboard() {
     };
 
     const stats = [
-        { label: 'Revenu Total', value: `MAD ${orders.reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0).toFixed(0)}`, icon: TrendingUp },
-        { label: 'Commandes', value: orders.length, icon: ShoppingCart },
+        { label: 'Revenu Total', value: `MAD ${(dashboardStats.total || 0).toLocaleString()}`, icon: TrendingUp },
+        { label: 'Commandes', value: dashboardStats.count || orders.length, icon: ShoppingCart },
         { label: 'Cliniciens Inscrits', value: users.length, icon: Users },
-        { label: 'Produits', value: products.length, icon: Package },
+        { label: 'Produits Active', value: products.length, icon: Package },
     ];
 
     if (loading) return (
@@ -181,9 +204,14 @@ export default function AdminDashboard() {
             <main className="flex-1 ml-64 p-8">
                 {/* Header Area */}
                 <header className="flex justify-between items-center mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900 capitalize">
-                        {activeTab === 'dashboard' ? 'Aperçu' : activeTab}
-                    </h1>
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-bold text-gray-900 capitalize">
+                            {activeTab === 'dashboard' ? 'Aperçu' : activeTab}
+                        </h1>
+                        <button onClick={loadAdminData} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                            <Clock className="w-4 h-4" />
+                        </button>
+                    </div>
                     <div className="flex items-center gap-4">
                         <div className="relative">
                             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -201,27 +229,23 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                {/* Tab Contents */}
                 <div className="max-w-6xl mx-auto">
-
-                    {/* DASHBOARD TAB */}
                     {activeTab === 'dashboard' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 {stats.map((stat, i) => (
-                                    <div key={i} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                                    <div key={i} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:border-medical-blue/30 transition-all group">
                                         <div className="flex items-center gap-3 mb-2">
-                                            <div className="p-2 bg-gray-100 rounded-md">
-                                                <stat.icon className="w-5 h-5 text-gray-600" />
+                                            <div className="p-2 bg-gray-50 rounded-md group-hover:bg-medical-blue/5">
+                                                <stat.icon className="w-5 h-5 text-gray-400 group-hover:text-medical-blue" />
                                             </div>
-                                            <span className="text-sm font-medium text-gray-600">{stat.label}</span>
+                                            <span className="text-sm font-medium text-gray-500">{stat.label}</span>
                                         </div>
-                                        <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
+                                        <div className="text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</div>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Recent Orders Box */}
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="px-6 py-4 border-b border-gray-200">
                                     <h2 className="text-base font-semibold text-gray-900">Commandes Récentes</h2>
@@ -237,14 +261,14 @@ export default function AdminDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {orders.slice(0, 5).map(order => (
-                                            <tr key={order.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900">#{order.id.slice(0, 6)}</td>
+                                            <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                                                <td className="px-6 py-4 font-medium text-gray-900">#{order.id.toString().slice(0, 6)}</td>
                                                 <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleDateString()}</td>
-                                                <td className="px-6 py-4 text-gray-900">MAD {order.total_amount}</td>
+                                                <td className="px-6 py-4 text-gray-900 font-semibold">MAD {order.total_amount}</td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
-                                                        ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                            order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
+                                                        ${order.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                                            order.status === 'delivered' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
                                                         {order.status}
                                                     </span>
                                                 </td>
@@ -256,43 +280,45 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* PRODUCTS TAB */}
                     {activeTab === 'products' && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h2 className="text-base font-semibold text-gray-900">Catalogue ({products.length})</h2>
+                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">Catalogue de Produits</h2>
                                 <button
                                     onClick={() => openProductModal()}
-                                    className="bg-[#000000] hover:bg-gray-800 text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2"
+                                    className="bg-medical-blue hover:bg-medical-blue-dark text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95"
                                 >
-                                    <Plus className="w-4 h-4" /> Ajouter Un Produit
+                                    <Plus className="w-4 h-4" /> Nouveau Produit
                                 </button>
                             </div>
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-[#f9fafb] text-gray-500 font-medium">
+                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-3">Produit</th>
                                         <th className="px-6 py-3">SKU</th>
-                                        <th className="px-6 py-3">Prix Base</th>
-                                        <th className="px-6 py-3">Stock</th>
+                                        <th className="px-6 py-3">Prix</th>
                                         <th className="px-6 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-gray-100">
                                     {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(product => (
-                                        <tr key={product.id} className="hover:bg-gray-50">
+                                        <tr key={product.id} className="hover:bg-gray-50/50 group">
                                             <td className="px-6 py-4">
-                                                <div className="font-medium text-gray-900">{product.name}</div>
-                                                <div className="text-gray-500 text-xs">{product.category_name}</div>
+                                                <div className="flex items-center gap-3">
+                                                    <img src={product.image_url} alt="" className="w-10 h-10 object-contain bg-gray-50 rounded" />
+                                                    <div>
+                                                        <div className="font-semibold text-gray-900 leading-none mb-1">{product.name}</div>
+                                                        <div className="text-gray-400 text-xs">{product.category_name}</div>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500">{product.sku}</td>
-                                            <td className="px-6 py-4 text-gray-900">MAD {product.base_unit_price}</td>
-                                            <td className="px-6 py-4 text-gray-500">{product.stock || 100}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button onClick={() => openProductModal(product)} className="text-gray-400 hover:text-gray-700 mx-2">
+                                            <td className="px-6 py-4 text-gray-500 font-mono text-xs">{product.sku}</td>
+                                            <td className="px-6 py-4 text-gray-900 font-medium">MAD {product.base_unit_price}</td>
+                                            <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openProductModal(product)} className="p-1.5 text-gray-400 hover:text-medical-blue hover:bg-medical-blue/5 rounded-md">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => handleDeleteProduct(product.id)} className="text-red-400 hover:text-red-600">
+                                                <button onClick={() => handleDeleteProduct(product.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md ml-1">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </td>
@@ -303,29 +329,30 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* ORDERS TAB */}
                     {activeTab === 'orders' && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-[#f9fafb] text-gray-500 font-medium">
+                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-3">ID</th>
                                         <th className="px-6 py-3">Date</th>
+                                        <th className="px-6 py-3">Client</th>
                                         <th className="px-6 py-3">Total</th>
                                         <th className="px-6 py-3">Statut</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {orders.filter(o => o.id.includes(searchTerm)).map(order => (
-                                        <tr key={order.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">#{order.id}</td>
-                                            <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-gray-900">MAD {order.total_amount}</td>
+                                <tbody className="divide-y divide-gray-100">
+                                    {orders.filter(o => o.id.toString().includes(searchTerm)).map(order => (
+                                        <tr key={order.id} className="hover:bg-gray-50/50">
+                                            <td className="px-6 py-4 font-bold text-gray-900">#{order.id.toString().slice(0, 8)}</td>
+                                            <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleString('fr-FR')}</td>
+                                            <td className="px-6 py-4">Clinique {order.user_id?.slice(0, 5) || 'Guest'}</td>
+                                            <td className="px-6 py-4 text-gray-900 font-bold">MAD {order.total_amount}</td>
                                             <td className="px-6 py-4">
                                                 <select
                                                     value={order.status}
                                                     onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                    className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 bg-white"
+                                                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
                                                 >
                                                     <option value="pending">En attente</option>
                                                     <option value="shipped">Expédiée</option>
@@ -340,33 +367,30 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* CUSTOMERS TAB */}
                     {activeTab === 'customers' && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-[#f9fafb] text-gray-500 font-medium">
                                     <tr>
-                                        <th className="px-6 py-3">Employé</th>
+                                        <th className="px-6 py-3">Practicien</th>
                                         <th className="px-6 py-3">Clinique</th>
                                         <th className="px-6 py-3">INPE</th>
-                                        <th className="px-6 py-3">Docs</th>
-                                        <th className="px-6 py-3">Statut</th>
+                                        <th className="px-6 py-3 text-right">Vérification</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-gray-100">
                                     {users.map(user => (
-                                        <tr key={user.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{user.email}</td>
+                                        <tr key={user.id} className="hover:bg-gray-50/50">
+                                            <td className="px-6 py-4 font-semibold text-gray-900">{user.email}</td>
                                             <td className="px-6 py-4 text-gray-500">{user.clinic_name}</td>
-                                            <td className="px-6 py-4 text-gray-500">{user.inpe_number || '-'}</td>
-                                            <td className="px-6 py-4 text-gray-500">
-                                                {user.license_url && <a href={user.license_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline"><FileText className="w-4 h-4" /></a>}
-                                            </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 text-medical-blue font-mono font-bold tracking-widest text-xs">{user.inpe_number || '-'}</td>
+                                            <td className="px-6 py-4 text-right">
                                                 {user.verification_status !== 'verified' ? (
-                                                    <button onClick={() => handleVerifyUser(user.id)} className="bg-green-600 text-white px-2 py-1 rounded text-xs px-3">Valider</button>
+                                                    <button onClick={() => handleVerifyUser(user.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Vérifier</button>
                                                 ) : (
-                                                    <span className="text-sm text-green-600 font-medium">Vérifié</span>
+                                                    <div className="flex items-center justify-end gap-1.5 text-emerald-600 font-bold text-xs uppercase tracking-tighter">
+                                                        <CheckCircle2 className="w-4 h-4" /> Qualifié
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>
@@ -378,66 +402,129 @@ export default function AdminDashboard() {
                 </div>
             </main>
 
+            {/* ORDER DETAIL MODAL */}
+            {selectedOrder && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in duration-300">
+                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">Détails de la Commande</h3>
+                                <p className="text-sm text-gray-400">#{selectedOrder.id}</p>
+                            </div>
+                            <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-white rounded-full transition-colors group">
+                                <X className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-8">
+                                <div>
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Livraison</div>
+                                    <div className="text-sm text-gray-900 font-medium">Casablanca, Maroc</div>
+                                    <div className="text-sm text-gray-500">Adresse de Clinique enregistrée</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Montant</div>
+                                    <div className="text-2xl font-black text-medical-blue">MAD {selectedOrder.total_amount}</div>
+                                </div>
+                            </div>
+                            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/20">
+                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Statut actuel</div>
+                                <div className="flex gap-2">
+                                    {['pending', 'shipped', 'delivered'].map((s) => (
+                                        <button
+                                            key={s}
+                                            onClick={() => handleUpdateStatus(selectedOrder.id, s)}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${selectedOrder.status === s
+                                                ? 'bg-medical-blue text-white border-medical-blue shadow-lg shadow-medical-blue/20'
+                                                : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'}`}
+                                        >
+                                            {s.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-8 py-6 bg-gray-50 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    window.open(`${process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1'}/orders/${selectedOrder.id}/invoice`);
+                                }}
+                                className="bg-white border border-gray-200 text-gray-900 px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:border-gray-300 transition-all flex items-center gap-2"
+                            >
+                                <FileText className="w-4 h-4" /> Télécharger Facture
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* PRODUCT MODAL */}
             {isProductModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center shrink-0">
-                            <h3 className="text-lg font-semibold text-gray-900">{editingProduct ? 'Modifier Produit' : 'Ajouter Produit'}</h3>
-                            <button onClick={() => setIsProductModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col scale-in-center">
+                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">{editingProduct ? 'Éditer le Catalogue' : 'Nouveau Dispositif Médical'}</h3>
+                                <p className="text-sm text-gray-400">Saisie des données cliniques pour D1 Edge</p>
+                            </div>
+                            <button onClick={() => setIsProductModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-400" /></button>
                         </div>
-                        <form onSubmit={handleSaveProduct} className="p-6 space-y-4 overflow-y-auto">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom du produit</label>
-                                    <input required type="text" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                        <form onSubmit={handleSaveProduct} className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-6 gap-6">
+                                <div className="col-span-4">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nom Commercial</label>
+                                    <input required type="text" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-medical-blue/10 focus:border-medical-blue transition-all" placeholder="Ex: Kit de Péridurale" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
-                                    <input required type="text" value={productForm.sku} onChange={e => setProductForm({ ...productForm, sku: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">SKU Unique</label>
+                                    <input required type="text" value={productForm.sku} onChange={e => setProductForm({ ...productForm, sku: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-mono" placeholder="SKU-XXXXX" />
+                                </div>
+
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Prix Unité (MAD)</label>
+                                    <input required type="number" step="0.01" value={productForm.base_unit_price} onChange={e => setProductForm({ ...productForm, base_unit_price: parseFloat(e.target.value) })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-medical-blue" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Quantité Stock</label>
+                                    <input required type="number" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: parseInt(e.target.value) })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Conditionnement</label>
+                                    <input required type="text" value={productForm.packaging_type} onChange={e => setProductForm({ ...productForm, packaging_type: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm" placeholder="Ex: Boîte de 100" />
+                                </div>
+
+                                <div className="col-span-3">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Catégorie</label>
+                                    <select value={productForm.category_id} onChange={e => setProductForm({ ...productForm, category_id: parseInt(e.target.value) })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-medical-blue/10">
+                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="col-span-3">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Marque Partner</label>
+                                    <select value={productForm.brand_id} onChange={e => setProductForm({ ...productForm, brand_id: parseInt(e.target.value) })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-medical-blue/10">
+                                        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="col-span-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Images Asset URL (Sourcing Clinique)</label>
+                                    <input required type="text" value={productForm.image_url} onChange={e => setProductForm({ ...productForm, image_url: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 italic" />
+                                </div>
+
+                                <div className="col-span-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Fiche Technique (JSON Builder)</label>
+                                    <textarea required rows={4} value={productForm.specifications} onChange={e => setProductForm({ ...productForm, specifications: e.target.value })} className="w-full bg-slate-900 border border-slate-800 text-emerald-400 rounded-xl px-4 py-3 text-xs font-mono"></textarea>
+                                </div>
+
+                                <div className="col-span-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description Marketing & Légale</label>
+                                    <textarea rows={4} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm"></textarea>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Prix de Base (MAD)</label>
-                                    <input required type="number" step="0.01" value={productForm.base_unit_price} onChange={e => setProductForm({ ...productForm, base_unit_price: parseFloat(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                                    <input required type="number" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: parseInt(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">ID Catégorie</label>
-                                    <input required type="number" value={productForm.category_id} onChange={e => setProductForm({ ...productForm, category_id: parseInt(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">ID Marque (Brand)</label>
-                                    <input required type="number" value={productForm.brand_id} onChange={e => setProductForm({ ...productForm, brand_id: parseInt(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type de Conditionnement</label>
-                                    <input required type="text" placeholder="Ex: Unité, Boîte de 10" value={productForm.packaging_type} onChange={e => setProductForm({ ...productForm, packaging_type: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">URL Image Royale</label>
-                                    <input required type="text" value={productForm.image_url} onChange={e => setProductForm({ ...productForm, image_url: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Spécifications Techniques (JSON)</label>
-                                <textarea required rows={3} value={productForm.specifications} onChange={e => setProductForm({ ...productForm, specifications: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"></textarea>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description Clinique</label>
-                                <textarea rows={4} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm max-h-32"></textarea>
-                            </div>
-                            <div className="pt-4 flex justify-end gap-3 shrink-0 border-t border-gray-200 mt-4">
-                                <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 mt-4">Annuler</button>
-                                <button type="submit" className="px-4 py-2 bg-[#000000] text-white rounded-md text-sm font-medium hover:bg-gray-800 mt-4">Sauvegarder</button>
+
+                            <div className="pt-8 flex justify-end gap-4 sticky bottom-0 bg-white">
+                                <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-8 py-3 bg-gray-100 text-gray-500 rounded-2xl text-sm font-bold hover:bg-gray-200 transition-all">Annuler</button>
+                                <button type="submit" className="px-8 py-3 bg-medical-blue text-white rounded-2xl text-sm font-bold shadow-xl shadow-medical-blue/20 hover:scale-105 active:scale-95 transition-all">Sauvegarder</button>
                             </div>
                         </form>
                     </div>

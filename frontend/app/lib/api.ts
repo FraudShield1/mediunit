@@ -192,3 +192,20 @@ export async function deleteProduct(productId: string) {
     if (!res.ok) throw new Error('Failed to delete product');
     return res.json();
 }
+
+export async function fetchBrands() {
+    const res = await fetch(`${API_URL}/brands`);
+    if (!res.ok) {
+        // Fallback for brands if not implemented on worker yet, return empty list
+        return [];
+    }
+    return res.json();
+}
+
+export async function fetchAdminStats() {
+    const res = await fetch(`${API_URL}/dashboard/`, {
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch stats');
+    return res.json();
+}

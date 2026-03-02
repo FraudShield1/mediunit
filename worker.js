@@ -23,6 +23,13 @@ export default {
                 });
             }
 
+            if (path === "/api/v1/brands") {
+                const { results } = await env.DB.prepare("SELECT * FROM brand").all();
+                return new Response(JSON.stringify(results), {
+                    headers: { "Content-Type": "application/json", ...corsHeaders }
+                });
+            }
+
             if (path === "/api/v1/products") {
                 const categorySlug = url.searchParams.get("category_slug");
                 const search = url.searchParams.get("search");
@@ -271,6 +278,100 @@ export default {
                 return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
+
+            if (path === "/api/v1/auth/login" && request.method === "POST") {
+                const body = await request.json();
+                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(body.username, body.password).first();
+                if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
+                return new Response(JSON.stringify({ token: "stub-token-" + user.id, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/auth/register" && request.method === "POST") {
+                const body = await request.json();
+                const id = crypto.randomUUID();
+                await env.DB.prepare("INSERT INTO user (id, email, hashed_password, clinic_name, inpe_number, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))")
+                    .bind(id, body.email, body.password, body.clinic_name, body.inpe_number).run();
+                return new Response(JSON.stringify({ success: true, id }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/orders/" && request.method === "POST") {
+                const body = await request.json();
+                const orderId = body.id || Math.floor(Math.random() * 1000000).toString();
+
+                // Calculate total and apply volume discounts
+                let subtotal = 0;
+                let itemCount = 0;
+                for (const item of body.items) {
+                    const product = await env.DB.prepare("SELECT base_unit_price FROM product WHERE id = ?").bind(item.product_id).first();
+                    if (product) {
+                        subtotal += product.base_unit_price * item.quantity;
+                        itemCount += item.quantity;
+                    }
+                }
+
+                let total = subtotal;
+                if (itemCount >= 50) total = subtotal * 0.8;
+                else if (itemCount >= 10) total = subtotal * 0.9;
+
+                // Create Address
+                const addrId = Math.floor(Math.random() * 1000000);
+                await env.DB.prepare("INSERT INTO address (id, first_name, last_name, phone, street_address, city, zip_code) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                    .bind(addrId, body.first_name, body.last_name, body.phone, body.address, body.city || 'Casablanca', body.zip_code).run();
+
+                // Create Order
+                await env.DB.prepare("INSERT INTO \"order\" (id, total_amount, status, shipping_address_id, created_at) VALUES (?, ?, 'pending', ?, datetime('now'))")
+                    .bind(orderId, total, addrId).run();
+
+                // Create Items
+                for (const item of body.items) {
+                    await env.DB.prepare("INSERT INTO order_item (order_id, product_id, quantity, price_per_unit_at_purchase, selected_variant) VALUES (?, ?, ?, ?, ?)")
+                        .bind(orderId, item.product_id, item.quantity, 0, item.variant || '').run();
+                }
+
+                return new Response(JSON.stringify({ success: true, id: orderId, total }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/dashboard/" && request.method === "GET") {
+                const { results: orders } = await env.DB.prepare("SELECT * FROM \"order\" LIMIT 10").all();
+                const stats = await env.DB.prepare("SELECT COUNT(*) as count, SUM(total_amount) as total FROM \"order\"").first();
+                return new Response(JSON.stringify({ orders, stats }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path.match(/\/api\/v1\/orders\/([^/]+)\/invoice/) && request.method === "GET") {
+                const orderId = path.split("/")[4];
+                const order = await env.DB.prepare("SELECT * FROM \"order\" WHERE id = ?").bind(orderId).first();
+                if (!order) return new Response("Not Found", { status: 404, headers: corsHeaders });
+
+                const items = await env.DB.prepare("SELECT oi.*, p.name FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = ?").bind(orderId).all();
+
+                try {
+                    const pdfDoc = await PDFDocument.create();
+                    const page = pdfDoc.addPage([595.28, 841.89]);
+                    const { width, height } = page.getSize();
+                    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+                    page.drawText('MediUnit - Facture Officielle', { x: 50, y: height - 50, size: 20, font: fontBold });
+                    page.drawText(`Commande ID: #${orderId}`, { x: 50, y: height - 80, size: 12, font: fontRegular });
+                    page.drawText(`Total: MAD ${order.total_amount}`, { x: 50, y: height - 100, size: 14, font: fontBold });
+
+                    let y = height - 140;
+                    page.drawText('Articles:', { x: 50, y, size: 12, font: fontBold });
+                    y -= 20;
+
+                    for (const item of items.results) {
+                        page.drawText(`- ${item.name} (x${item.quantity})`, { x: 50, y, size: 10, font: fontRegular });
+                        y -= 15;
+                    }
+
+                    const pdfBytes = await pdfDoc.save();
+                    return new Response(pdfBytes, {
+                        headers: { "Content-Type": "application/pdf", ...corsHeaders }
+                    });
+                } catch (e) {
+                    return new Response("PDF Generation Error", { status: 500, headers: corsHeaders });
+                }
+            }
 
             if (path.match(/^\/api\/v1\/products\/([^/]+)$/) && request.method === "DELETE") {
                 const productId = path.split("/")[4];
