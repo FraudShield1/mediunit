@@ -5,14 +5,30 @@ import { Metadata } from 'next';
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
     try {
         const product = await fetchProductBySlug(params.slug);
-        const title = `${product.name} à l'unité - Fournisseur Médical B2B Casablanca | MediUnit`;
+        const title = `${product.name} | MediUnit Clinical Sourcing`;
+        const description = product.description.replace(/<[^>]*>?/gm, '').slice(0, 160);
         return {
             title,
-            description: product.description.slice(0, 160),
+            description,
             openGraph: {
                 title,
-                description: product.description.slice(0, 160),
-                images: product.image_url ? [product.image_url] : [],
+                description,
+                type: 'article',
+                url: `https://mediunit.ma/products/${params.slug}`,
+                images: [
+                    {
+                        url: product.image_url,
+                        width: 800,
+                        height: 800,
+                        alt: product.name,
+                    },
+                ],
+            },
+            twitter: {
+                card: 'summary_large_image',
+                title,
+                description,
+                images: [product.image_url],
             },
         };
     } catch (e) {
@@ -22,19 +38,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export async function generateStaticParams() {
     try {
-        const products = await fetchProducts();
-        if (!products || products.length === 0) throw new Error("No products fetched");
+        // Force fetch from the live production backend during build
+        const res = await fetch('https://mediunit-backend.a-naouri.workers.dev/api/v1/products', {
+            next: { revalidate: 0 } // No cache
+        });
+        const data = await res.json();
+        const products = data.data || data.items || data || [];
+
+        if (!products || products.length === 0) {
+            console.warn("API returned 0 products during build");
+            return [];
+        }
+
         return products.map((product: any) => ({
             slug: product.slug,
         }));
     } catch (e) {
-        console.error("Failed to fetch static params for products, using fallback", e);
-        // Fallback for critical pages to avoid build failure
-        return [
-            { slug: 'speculum-auriculaire-greatcare' },
-            { slug: 'seringue-luer-slip-3-pieces' },
-            { slug: 'aiguille-de-rachianesthesie-pointe-crayon' }
-        ];
+        console.error("Critical: Failed to fetch static params for products!", e);
+        return []; // Return empty array so build passes but doesn't fake pages
     }
 }
 
