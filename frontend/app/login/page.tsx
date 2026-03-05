@@ -6,10 +6,12 @@ import { Activity, Mail, Lock, LogIn, ArrowLeft, Loader2 } from 'lucide-react';
 import { login } from '@/app/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/useAuthStore';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 export default function LoginPage() {
     const router = useRouter();
     const { setAuth } = useAuthStore();
+    const { t } = useLanguageStore();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,10 +23,10 @@ export default function LoginPage() {
         setError('');
         try {
             const data = await login(email, password);
-            setAuth(data.access_token);
+            setAuth(data.token, data.user);
             router.push('/dashboard');
         } catch (err: any) {
-            setError(err.message || 'Échec de la connexion');
+            setError(err.message || t('Échec de la connexion', 'Login failed'));
         } finally {
             setLoading(false);
         }
@@ -35,7 +37,7 @@ export default function LoginPage() {
             <header className="absolute top-0 w-full p-4 md:p-8 z-10">
                 <Link href="/" className="inline-flex items-center gap-2 text-slate-gray hover:text-medical-blue transition-colors">
                     <ArrowLeft className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Retour à l'accueil</span>
+                    <span className="font-semibold text-sm">{t("Retour à l'accueil", "Back to Home")}</span>
                 </Link>
             </header>
 
@@ -45,13 +47,13 @@ export default function LoginPage() {
                         <div className="w-16 h-16 bg-medical-blue rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-medical-blue/30">
                             <Activity className="text-white w-8 h-8" />
                         </div>
-                        <h1 className="text-3xl font-black text-slate-gray-dark tracking-tight">Bienvenue</h1>
-                        <p className="text-slate-gray mt-2 text-center text-sm font-medium">Connectez-vous pour accéder à votre espace MediUnit.</p>
+                        <h1 className="text-3xl font-black text-slate-gray-dark tracking-tight">{t("Bienvenue", "Welcome")}</h1>
+                        <p className="text-slate-gray mt-2 text-center text-sm font-medium">{t("Connectez-vous pour accéder à votre espace MediUnit.", "Log in to access your MediUnit space.")}</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest pl-1">Adresse E-mail</label>
+                            <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest pl-1">{t("Adresse E-mail", "Email Address")}</label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-gray-light" />
                                 <input
@@ -67,8 +69,8 @@ export default function LoginPage() {
 
                         <div className="space-y-2">
                             <div className="flex items-center justify-between pl-1">
-                                <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest">Mot de passe</label>
-                                <Link href="#" className="text-xs font-bold text-medical-blue hover:underline">Oublié ?</Link>
+                                <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest">{t("Mot de passe", "Password")}</label>
+                                <Link href="#" className="text-xs font-bold text-medical-blue hover:underline">{t("Oublié ?", "Forgot?")}</Link>
                             </div>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-gray-light" />
@@ -96,7 +98,7 @@ export default function LoginPage() {
                         >
                             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                                 <>
-                                    <span>Se Connecter</span>
+                                    <span>{t("Se Connecter", "Log In")}</span>
                                     <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
@@ -105,8 +107,8 @@ export default function LoginPage() {
 
                     <div className="mt-8 pt-8 border-t border-slate-gray-light/10 text-center">
                         <p className="text-sm font-medium text-slate-gray">
-                            Nouveau sur MediUnit ?{' '}
-                            <Link href="#" className="font-bold text-medical-blue hover:underline">Demander un accès</Link>
+                            {t("Nouveau sur MediUnit ?", "New to MediUnit?")}{' '}
+                            <Link href="/register" className="font-bold text-medical-blue hover:underline">{t("Demander un accès", "Request Access")}</Link>
                         </p>
                     </div>
                 </div>

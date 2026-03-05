@@ -45,6 +45,9 @@ For thorough architectural deep-dives, please consult the exhaustive documentati
    Entity relationships, strict constraints, and the JSON-encoded `specifications` mechanism.
 4. **[PRD 7: DevOps & Deployment Strategy](./docs/prd_7_devops.md)**
    How to deploy using Wrangler CLI, environment variables, and bypass stuck GitHub integrations.
+5. **[PRD 8: Full Platform Audit & Future Improvements](./docs/prd_8_audit_improvements.md)**
+   Strategic documentation on what's missing (integrations, B2B roles), what could be improved (caching, testing), and why.
+
 
 *(Note: PRD 3, 5, and 6 were consolidated during development into the core architecture documents).*
 

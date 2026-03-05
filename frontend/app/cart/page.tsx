@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import EmptyState from '../components/EmptyState';
 
 const MIN_ORDER_MAD = 300;
 const FREE_DELIVERY_THRESHOLD = 1500;
@@ -27,7 +28,8 @@ export default function CartPage() {
     }, 0);
 
     const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (items.length > 0 ? DELIVERY_FEE_MAD : 0);
-    const total = subtotal + deliveryFee;
+    const tax = subtotal * 0.20; // 20% VAT
+    const total = subtotal + tax + deliveryFee;
     const needsMoreForMin = Math.max(0, MIN_ORDER_MAD - subtotal);
     const needsMoreForFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
     const freeDeliveryProgress = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
@@ -77,16 +79,13 @@ export default function CartPage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-24 bg-white rounded-[3rem] border border-slate-gray-light/20 shadow-xl shadow-medical-blue/5">
-                                <div className="w-24 h-24 bg-slate-gray-light/10 text-medical-blue rounded-[2rem] flex items-center justify-center mx-auto mb-6">
-                                    <ShoppingCart className="w-10 h-10" />
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-gray-dark mb-3">{t('Votre panier est vide', 'Your cart is empty')}</h3>
-                                <p className="text-slate-gray font-medium mb-8 max-w-sm mx-auto">{t('Découvrez notre catalogue de consommables médicaux et de kits chirurgicaux pour votre clinique.', 'Discover our catalog of medical consumables and surgical kits for your clinic.')}</p>
-                                <Link href="/" className="inline-flex items-center justify-center px-10 py-5 bg-medical-blue hover:bg-medical-blue-dark active:bg-medical-blue transition-all rounded-2xl text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-medical-blue/20 hover:scale-105 active:scale-95">
-                                    {t('Parcourir le Catalogue', 'Browse Catalog')}
-                                </Link>
-                            </div>
+                            <EmptyState
+                                icon={ShoppingCart}
+                                title={t('Votre panier est vide', 'Your cart is empty')}
+                                description={t('Découvrez notre catalogue de consommables médicaux et de kits chirurgicaux pour votre clinique.', 'Discover our catalog of medical consumables and surgical kits for your clinic.')}
+                                actionLabel={t('Parcourir le Catalogue', 'Browse Catalog')}
+                                actionHref="/"
+                            />
                         )}
                     </div>
 
@@ -112,6 +111,10 @@ export default function CartPage() {
                                 <div className="flex justify-between items-center">
                                     <span className="text-slate-gray font-medium">{t('Sous-total HT', 'Subtotal (Excl. Tax)')}</span>
                                     <span className="font-bold text-slate-gray-dark">MAD {subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm mb-2">
+                                    <span className="text-slate-gray">{t('TVA (20%)', 'VAT (20%)')}</span>
+                                    <span className="font-bold text-slate-gray-dark">MAD {tax.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-gray">{t('Frais de Livraison', 'Delivery Fee')}</span>
@@ -149,9 +152,9 @@ export default function CartPage() {
                         <div className="bg-clinic-white rounded-3xl p-6 border border-slate-gray-light/10">
                             <h4 className="font-bold text-slate-gray-dark mb-2">{t("Besoin d'Assistance ?", "Need Assistance?")}</h4>
                             <p className="text-xs text-slate-gray leading-relaxed mb-4">{t("Notre équipe B2B est prête à vous aider pour les licences en volume et documents d'achat.", "Our B2B team is ready to help you with volume licenses and purchasing documents.")}</p>
-                            <button className="w-full h-12 rounded-2xl bg-white border border-slate-gray-light/20 text-medical-blue text-sm font-bold hover:bg-medical-blue-light/10 transition-colors">
+                            <a href={`https://wa.me/212661364375?text=${encodeURIComponent(t(`*Bonjour MediUnit Assistance* 👋\n\nJe vous contacte au sujet de ma commande en cours.\n\n📦 *Mon Panier Actuel :*\n${items.map(item => `▪ ${item.name} *(x${item.quantity})*`).join('\n')}\n\n💰 *Total estimé TTC:* MAD ${total.toFixed(2)}\n\nJ'ai besoin d'une assistance pour : `, `*Hello MediUnit Support* 👋\n\nI am contacting you regarding my current order.\n\n📦 *My Current Cart :*\n${items.map(item => `▪ ${item.name} *(x${item.quantity})*`).join('\n')}\n\n💰 *Estimated total incl. VAT:* MAD ${total.toFixed(2)}\n\nI need assistance with: `))}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-full h-12 rounded-2xl bg-white border border-slate-gray-light/20 text-medical-blue text-sm font-bold hover:bg-medical-blue-light/10 transition-colors">
                                 {t('Contacter un Agent', 'Contact an Agent')}
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </div>

@@ -22,6 +22,7 @@ import { useCartStore } from '@/app/store/useCartStore';
 import { useAuthStore } from '@/app/store/useAuthStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import ComplianceGateModal from '@/app/components/ComplianceGateModal';
+import SupportSection from '@/app/components/SupportSection';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
@@ -102,7 +103,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
 
         if (type === 'Fiche Technique') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
-            window.open(`${apiUrl}/products/${product.slug}/spec-pdf`, '_blank');
+            window.open(`${apiUrl}/products/${product.slug}/spec-pdf?lang=${language}`, '_blank');
             return;
         }
 
@@ -137,8 +138,8 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
 
     if (!product) return <div className="min-h-screen flex items-center justify-center bg-clinic-white">
         <div className="text-center">
-            <h1 className="text-2xl font-bold text-slate-gray-dark">Produit introuvable</h1>
-            <Link href="/" className="text-medical-blue mt-4 inline-block hover:underline">Retour au catalogue</Link>
+            <h1 className="text-2xl font-bold text-slate-gray-dark">{t('Produit introuvable', 'Product Not Found')}</h1>
+            <Link href="/" className="text-medical-blue mt-4 inline-block hover:underline">{t('Retour au catalogue', 'Back to catalog')}</Link>
         </div>
     </div>;
 
@@ -146,26 +147,28 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
         <div className="min-h-screen bg-clinic-white pb-24">
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-gray-light/20">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <Link href="/" className="p-2 -ml-2 text-slate-gray hover:text-medical-blue transition-colors rounded-full" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Link href="/" aria-label={t('Retour au catalogue', 'Back to catalog')} className="p-2 -ml-2 text-slate-gray hover:text-medical-blue transition-colors rounded-full" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ArrowLeft className="w-6 h-6" />
                     </Link>
                     <div className="flex items-center gap-4">
                         {/* Language Switcher */}
-                        <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10">
+                        <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10" role="group" aria-label={t('Changer la langue', 'Change language')}>
                             <button
                                 onClick={() => setLanguage('fr')}
+                                aria-label="Français"
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'fr' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
                             >
                                 FR
                             </button>
                             <button
                                 onClick={() => setLanguage('en')}
+                                aria-label="English"
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'en' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
                             >
                                 EN
                             </button>
                         </div>
-                        <Link href="/cart" className="relative text-slate-gray hover:text-medical-blue transition-colors rounded-full" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Link href="/cart" aria-label={t('Voir le panier', 'View cart')} className="relative text-slate-gray hover:text-medical-blue transition-colors rounded-full" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ShoppingCart className="w-6 h-6" />
                         </Link>
                     </div>
@@ -198,13 +201,14 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                 src={product.image_url || "https://via.placeholder.com/600?text=Product+Image"}
                                 alt={product.name}
                                 fill
+                                sizes="(max-width: 1024px) 100vw, 50vw"
                                 className="object-contain p-8 group-hover:scale-105 transition-transform duration-500"
                                 priority={true}
                             />
                             {/* Stock Indicator */}
                             <div className="absolute top-8 left-8 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full border border-sage-green/20 shadow-lg">
                                 <div className="w-2 h-2 bg-sage-green rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-sage-green-dark">En Stock - Expédié sous 24h</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-sage-green-dark">{t('En Stock - Expédié sous 24h', 'In Stock - Ships within 24h')}</span>
                             </div>
                         </div>
 
@@ -228,27 +232,40 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                     <div className="flex flex-col">
                         <div className="mb-2">
                             <span className="px-3 py-1 bg-medical-blue/10 text-medical-blue text-[10px] font-black rounded-full uppercase tracking-wider">
-                                {product.category_name || product.category?.name || 'Fourniture Médicale'}
+                                {product.category_name || product.category?.name || t('Fourniture Médicale', 'Medical Supply')}
                             </span>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark mb-4 leading-tight">
                             {product.name}
                         </h1>
-                        <div className="flex items-center gap-4 mb-8">
+                        <div className="flex items-center gap-6 mb-8">
                             <p className="text-slate-gray-dark/40 font-mono text-sm uppercase tracking-widest">
                                 SKU: {selectedVariant ? `${product.sku}-${selectedVariant.replace(/[^a-zA-Z0-9]/g, '')}` : product.sku}
                             </p>
                             {(product.brand_entity?.name || product.brand) && (
-                                <span className="text-[10px] font-black text-medical-blue bg-medical-blue/5 px-2 py-1 rounded-full ring-1 ring-medical-blue/10 uppercase tracking-widest">
-                                    {product.brand_entity?.name || product.brand}
-                                </span>
+                                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-gray-light/10 shadow-sm ring-1 ring-slate-gray-light/5">
+                                    {product.brand_entity?.logo_url && (
+                                        <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 relative bg-clinic-white border border-slate-gray-light/5 p-1">
+                                            <Image
+                                                src={product.brand_entity.logo_url}
+                                                alt={product.brand_entity.name}
+                                                fill
+                                                sizes="32px"
+                                                className="object-contain"
+                                            />
+                                        </div>
+                                    )}
+                                    <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">
+                                        {product.brand_entity?.name || product.brand}
+                                    </span>
+                                </div>
                             )}
                         </div>
 
                         <div className="mb-12 bg-white rounded-[2rem] p-8 border border-slate-gray-light/10 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-medical-blue/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
 
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-gray-light mb-6">Tarification Professionnelle</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-gray-light mb-6">{t('Tarification Professionnelle', 'Professional Pricing')}</h3>
                             <div className="flex items-baseline gap-2 mb-6">
                                 <span className="text-5xl font-black text-medical-blue">MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount)).toFixed(2)}</span>
                                 <span className="text-lg text-slate-gray font-bold uppercase tracking-tighter">/ {product.packaging_type}</span>
@@ -257,7 +274,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                             {/* Variant Selection (If Multi-Size) */}
                             {variants.length > 0 && (
                                 <div className="mb-8 p-4 bg-slate-gray-light/5 rounded-2xl border border-dashed border-slate-gray-light/20">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray mb-3 pb-2 border-b border-slate-gray-light/10">Sélectionner la Taille / Variante</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray mb-3 pb-2 border-b border-slate-gray-light/10">{t('Sélectionner la Taille / Variante', 'Select Size / Variant')}</p>
                                     <div className="flex flex-wrap gap-2">
                                         {variants.map((v) => (
                                             <button
@@ -302,6 +319,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                 </div>
                                 <button
                                     onClick={addToCart}
+                                    aria-label={t(`Ajouter ${quantity}x ${product.name} au panier`, `Add ${quantity}x ${product.name} to cart`)}
                                     className="flex-1 btn-primary h-14 text-lg relative group shadow-xl shadow-medical-blue/20 hover:shadow-medical-blue/40 transition-all font-black"
                                 >
                                     <span>{t('AJOUTER AU PANIER', 'ADD TO CART')} - MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount) * quantity).toFixed(2)}</span>
@@ -375,10 +393,10 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                     }
 
                                     const specList = [
-                                        { label: 'Conditionnement', value: product.packaging_type },
-                                        { label: 'Référence SKU', value: product.sku },
-                                        { label: 'Marque', value: product.brand_entity?.name || product.brand },
-                                        { label: 'Fabricant', value: product.brand_entity?.manufacturer },
+                                        { label: t('Conditionnement', 'Packaging'), value: product.packaging_type },
+                                        { label: t('Référence SKU', 'SKU Reference'), value: product.sku },
+                                        { label: t('Marque', 'Brand'), value: product.brand_entity?.name || product.brand },
+                                        { label: t('Fabricant', 'Manufacturer'), value: product.brand_entity?.manufacturer },
                                         // Merge dynamic specs, filtering out common keys
                                         ...Object.entries(dynamicSpecs)
                                             .filter(([k]) => !['marque', 'brand', 'fabricant', 'manufacturer', 'sku', 'packaging', 'conditionnement'].includes(k.toLowerCase()))
@@ -430,6 +448,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                         </div>
                     </div>
                 </div>
+                <SupportSection productContext={`${product.name} (SKU: ${product.sku})`} />
             </main>
             <Footer />
             <BottomNav />

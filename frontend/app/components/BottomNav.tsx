@@ -4,16 +4,18 @@ import React from 'react';
 import { Home, Search, RefreshCcw, User, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 export default function BottomNav() {
     const pathname = usePathname();
+    const { t } = useLanguageStore();
 
     const navItems = [
-        { icon: Home, label: 'Accueil', href: '/' },
-        { icon: Search, label: 'Chercher', href: '/search' },
-        { icon: ShoppingCart, label: 'Ma Commande', href: '/cart' },
-        { icon: RefreshCcw, label: 'Réappro', href: '/dashboard' },
-        { icon: User, label: 'Mon Espace', href: '/dashboard' },
+        { icon: Home, label: t('Accueil', 'Home'), href: '/' },
+        { icon: Search, label: t('Chercher', 'Search'), href: '/search' },
+        { icon: ShoppingCart, label: t('Ma Commande', 'My Order'), href: '/cart' },
+        { icon: RefreshCcw, label: t('Réappro', 'Reorder'), href: '/dashboard' },
+        { icon: User, label: t('Mon Espace', 'My Account'), href: '/dashboard' },
     ];
 
     return (
@@ -25,7 +27,14 @@ export default function BottomNav() {
                         <Link
                             key={item.label}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] px-2 transition-colors ${isActive ? 'text-medical-blue' : 'text-slate-gray-light'
+                            aria-label={item.label}
+                            onClick={(e) => {
+                                if (isActive) {
+                                    e.preventDefault();
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] px-2 transition-colors ${isActive ? 'text-medical-blue' : 'text-slate-gray'
                                 }`}
                         >
                             <item.icon className={`w-5 h-5 ${isActive ? 'fill-medical-blue/10' : ''}`} />

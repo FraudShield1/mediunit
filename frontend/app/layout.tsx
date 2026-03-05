@@ -24,30 +24,62 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
     metadataBase: new URL('https://mediunit-frontend.pages.dev'),
-    title: "MediUnit | Fournisseur de Fournitures Chirurgicales & Kits Cliniques Casablanca",
-    description: "Commandez vos consommables médicaux à l'unité. Livraison 24h pour les cliniques et médecins au Maroc (Casablanca, Rabat). Matériel chirurgical de haute qualité.",
+    title: "MediUnit | Grossiste Dispositifs Médicaux & Consommables Casablanca Morocco",
+    description: "MediUnit: Premier hub B2B pour le sourcing de dispositifs médicaux au Maroc. Livraison 24h/48h sur Casablanca et tout le royaume. Consommables chirurgicaux, kits cliniques et matériel de soins.",
     manifest: "/manifest.json",
+    keywords: ["dispositifs médicaux", "consommables médicaux", "maroc", "casablanca", "sourcing clinique", "kits médicaux", "matériel de chirurgie"],
+    authors: [{ name: "MediUnit Morocco" }],
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            'max-video-preview': -1,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+        },
+    },
     alternates: {
         canonical: '/',
     },
+    icons: {
+        icon: '/favicon.png',
+        apple: '/favicon.png',
+    },
     openGraph: {
-        title: "MediUnit - Fournisseur Médical B2B pour Cliniques",
-        description: "Fournitures cliniques et kits spécialisés à l'unité. Livraison express au Maroc.",
+        title: "MediUnit - Sourcing Excellence en Dispositifs Médicaux B2B",
+        description: "Plateforme B2B dédiée aux plateaux techniques marocains. Optimisez vos stocks avec une livraison fiable et certifiée.",
         url: "https://mediunit-frontend.pages.dev",
         siteName: "MediUnit Morocco",
+        images: [
+            {
+                url: '/logo.png',
+                width: 1200,
+                height: 630,
+                alt: 'MediUnit Medical Sourcing Morocco',
+            },
+        ],
         locale: "fr_MA",
         type: "website",
-    }
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: "MediUnit - Fournisseur Médical B2B",
+        description: "Dispositifs médicaux et consommables chirurgicaux au Maroc.",
+        images: ['/logo.png'],
+    },
 };
 
 import { Toaster } from 'react-hot-toast';
+import BackToTop from './components/BackToTop';
 
 const jsonLd = {
     "@context": "https://schema.org",
     "@type": "MedicalOrganization",
     "name": "MediUnit",
     "url": "https://mediunit-frontend.pages.dev",
-    "logo": "https://mediunit-frontend.pages.dev/apple-touch-icon.png",
+    "logo": "https://mediunit-frontend.pages.dev/logo.png",
     "description": "Fournitures cliniques et kits spécialisés à l'unité. Livraison express au Maroc (Casablanca, Rabat).",
     "address": {
         "@type": "PostalAddress",
@@ -72,6 +104,7 @@ export default function RootLayout({
             <body className="font-sans antialiased">
                 <Toaster position="top-center" reverseOrder={false} />
                 {children}
+                <BackToTop />
             </body>
         </html>
     );

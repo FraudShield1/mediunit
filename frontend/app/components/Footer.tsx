@@ -2,6 +2,7 @@
 
 import { ShieldCheck, Activity, Globe } from 'lucide-react';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import Logo from './Logo';
 
 export default function Footer() {
     const { t } = useLanguageStore();
@@ -10,10 +11,7 @@ export default function Footer() {
             <div className="max-w-7xl mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Activity className="w-6 h-6 text-medical-blue" />
-                            <span className="text-xl font-bold text-medical-blue-dark">MediUnit</span>
-                        </div>
+                        <Logo width={100} height={35} />
                         <p className="text-sm text-slate-gray leading-relaxed max-w-xs">
                             {t('Premier hub B2B dédié aux consommables critiques et kits spécialisés pour les praticiens au Maroc.', 'Premier B2B hub dedicated to critical consumables and specialized kits for practitioners in Morocco.')}
                         </p>
@@ -45,7 +43,7 @@ export default function Footer() {
                 </div>
 
                 <div className="pt-8 border-t border-slate-gray-light/10 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray-light">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray-dark">
                         © 2026 MediUnit Medical Systems. {t('Tous droits réservés.', 'All rights reserved.')}
                     </p>
                 </div>

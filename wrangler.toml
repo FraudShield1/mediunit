@@ -5,6 +5,8 @@ main = "./worker.js"
 [vars]
 ENVIRONMENT = "production"
 
+migrations_dir = "migrations"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "mediunit_db"
@@ -13,3 +15,4 @@ database_id = "87f7686a-bba3-4b9a-9407-3d261e8ff224"
 [[r2_buckets]]
 binding = "STORAGE"
 bucket_name = "mediunit-storage"
+

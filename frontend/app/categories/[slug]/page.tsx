@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         if (!category) return { title: 'Catégorie non trouvée | MediUnit' };
 
         return {
+            metadataBase: new URL('https://mediunit-frontend.pages.dev'),
             title: `${category.name} | Fournitures Médicales MediUnit Casablanca`,
             description: `Achetez des ${category.name.toLowerCase()} de qualité professionnelle sur MediUnit. Livraison 24h à Casablanca pour cliniques et praticiens.`,
         };

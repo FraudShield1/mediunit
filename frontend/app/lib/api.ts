@@ -195,10 +195,18 @@ export async function deleteProduct(productId: string) {
 
 export async function fetchBrands() {
     const res = await fetch(`${API_URL}/brands`);
-    if (!res.ok) {
-        // Fallback for brands if not implemented on worker yet, return empty list
-        return [];
-    }
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function updateBrand(brandId: number, brandData: any) {
+    const res = await fetch(`${API_URL}/brands/${brandId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(brandData)
+    });
+    if (!res.ok) throw new Error('Failed to update brand');
     return res.json();
 }
 

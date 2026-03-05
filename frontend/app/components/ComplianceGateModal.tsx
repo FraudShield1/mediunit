@@ -3,6 +3,7 @@
 import React from 'react';
 import { ShieldCheck, Lock, X, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 interface ComplianceGateModalProps {
     isOpen: boolean;
@@ -11,6 +12,8 @@ interface ComplianceGateModalProps {
 }
 
 export default function ComplianceGateModal({ isOpen, onClose, documentType }: ComplianceGateModalProps) {
+    const { t } = useLanguageStore();
+
     if (!isOpen) return null;
 
     return (
@@ -26,6 +29,7 @@ export default function ComplianceGateModal({ isOpen, onClose, documentType }: C
 
                 <button
                     onClick={onClose}
+                    aria-label={t('Fermer la fenêtre', 'Close window')}
                     className="absolute top-6 right-6 p-2 text-slate-gray hover:text-medical-blue transition-colors rounded-full hover:bg-slate-gray-light/10"
                 >
                     <X className="w-5 h-5" />
@@ -40,13 +44,13 @@ export default function ComplianceGateModal({ isOpen, onClose, documentType }: C
                     </div>
 
                     <h2 className="text-2xl font-black text-slate-gray-dark mb-4 tracking-tight uppercase">
-                        Accès Géré par Conformité
+                        {t('Accès Géré par Conformité', 'Compliance Managed Access')}
                     </h2>
 
                     <p className="text-slate-gray font-medium leading-relaxed mb-8">
-                        Le document <span className="text-medical-blue font-bold tracking-tight">"{documentType}"</span> est une ressource professionnelle réservée aux clients enregistrés.
+                        {t('Le document ', 'The document ')}<span className="text-medical-blue font-bold tracking-tight">"{documentType}"</span>{t(' est une ressource professionnelle réservée aux clients enregistrés.', ' is a professional resource reserved for registered clients.')}
                         <br />
-                        <span className="text-xs mt-2 block opacity-70">Conformément aux régulations de l'ANPMP et du Ministère de la Santé.</span>
+                        <span className="text-xs mt-2 block opacity-70">{t('Conformément aux régulations de l\'ANPMP et du Ministère de la Santé.', 'In accordance with the regulations of the ANPMP and the Ministry of Health.')}</span>
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -55,14 +59,14 @@ export default function ComplianceGateModal({ isOpen, onClose, documentType }: C
                             className="flex items-center justify-center gap-2 h-14 rounded-2xl bg-medical-blue text-white font-black uppercase tracking-widest text-xs hover:bg-medical-blue-dark transition-all shadow-lg shadow-medical-blue/20"
                         >
                             <LogIn className="w-4 h-4" />
-                            Se Connecter
+                            {t("Se Connecter", "Log In")}
                         </Link>
                         <Link
                             href="/register"
                             className="flex items-center justify-center gap-2 h-14 rounded-2xl bg-white border-2 border-medical-blue text-medical-blue font-black uppercase tracking-widest text-xs hover:bg-medical-blue/5 transition-all"
                         >
                             <UserPlus className="w-4 h-4" />
-                            Créer un Compte
+                            {t("Créer un Compte", "Create Account")}
                         </Link>
                     </div>
 

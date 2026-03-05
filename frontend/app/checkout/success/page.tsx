@@ -6,10 +6,13 @@ import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Download, FileText, Loader2 } from 'lucide-react';
 import { fetchOrderInvoice } from '@/app/lib/api';
 import { generateOrderInvoicePDF } from '@/app/lib/invoice';
+import { toast } from 'react-hot-toast';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 function SuccessContent() {
     const searchParams = useSearchParams();
     const orderId = searchParams.get('order_id');
+    const { t } = useLanguageStore();
 
     const handleDownloadInvoice = async () => {
         if (!orderId) return;
@@ -20,7 +23,7 @@ function SuccessContent() {
             generateOrderInvoicePDF(orderData);
         } catch (error) {
             console.error(error);
-            alert("Erreur lors du téléchargement de la facture : " + error);
+            toast.error(t("Erreur lors du téléchargement de la facture : ", "Error downloading invoice: ") + error);
         }
     };
 
@@ -31,39 +34,39 @@ function SuccessContent() {
                     <CheckCircle2 className="w-12 h-12 text-sage-green" />
                 </div>
 
-                <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark mb-4 leading-tight">Commande Confirmée !</h1>
+                <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark mb-4 leading-tight">{t('Commande Confirmée !', 'Order Confirmed!')}</h1>
 
                 <p className="text-lg text-slate-gray mb-8">
-                    Merci pour votre confiance. Votre commande professionnelle a bien été enregistrée et sera traitée en priorité par notre équipe logistique B2B.
+                    {t('Merci pour votre confiance. Votre commande professionnelle a bien été enregistrée et sera traitée en priorité par notre équipe logistique B2B.', 'Thank you for your trust. Your professional order has been successfully registered and will be processed with priority by our B2B logistics team.')}
                 </p>
 
                 {orderId && (
                     <div className="bg-medical-blue/5 rounded-2xl p-6 border border-medical-blue/10 mb-8 flex items-center justify-between text-left">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-medical-blue">Référence Commande</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-medical-blue">{t('Référence Commande', 'Order Reference')}</p>
                             <p className="font-mono text-medical-blue-dark font-bold">#{orderId.slice(0, 8)}</p>
                         </div>
                         <button
                             onClick={handleDownloadInvoice}
                             className="bg-white p-3 rounded-xl border border-medical-blue/20 text-medical-blue hover:bg-medical-blue hover:text-white transition-all flex items-center gap-2 font-bold text-sm shadow-sm"
                         >
-                            <Download className="w-4 h-4" /> Facture PDF
+                            <Download className="w-4 h-4" /> {t('Facture PDF', 'PDF Invoice')}
                         </button>
                     </div>
                 )}
 
                 <div className="bg-clinic-white rounded-2xl p-6 border border-slate-gray-light/10 inline-block mb-10 text-left w-full">
-                    <p className="text-sm text-slate-gray font-bold uppercase tracking-widest mb-2">Informations de Livraison</p>
-                    <p className="text-slate-gray-dark font-medium">Paiement : <span className="text-medical-blue font-bold">À la livraison (Cash on Delivery)</span></p>
-                    <p className="text-slate-gray-dark font-medium mt-1">Délai estimé : <span className="text-medical-blue font-bold">24 à 48 heures ouvrées</span></p>
+                    <p className="text-sm text-slate-gray font-bold uppercase tracking-widest mb-2">{t('Informations de Livraison', 'Shipping Information')}</p>
+                    <p className="text-slate-gray-dark font-medium">{t('Paiement :', 'Payment :')} <span className="text-medical-blue font-bold">{t('À la livraison (Cash on Delivery)', 'Cash on Delivery')}</span></p>
+                    <p className="text-slate-gray-dark font-medium mt-1">{t('Délai estimé :', 'Estimated Date :')} <span className="text-medical-blue font-bold">{t('24 à 48 heures ouvrées', '24 to 48 business hours')}</span></p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link href="/dashboard" className="h-14 px-8 border border-slate-gray-light/30 rounded-2xl font-bold text-slate-gray flex items-center gap-2 hover:bg-clinic-white transition-all w-full sm:w-auto justify-center">
-                        <FileText className="w-5 h-5" /> Mon Espace Clinique
+                        <FileText className="w-5 h-5" /> {t('Mon Espace Clinique', 'My Clinical Space')}
                     </Link>
                     <Link href="/" className="btn-primary h-14 px-8 text-lg w-full sm:w-auto group">
-                        <span>Retour au Catalogue</span>
+                        <span>{t('Retour au Catalogue', 'Back to Catalog')}</span>
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>

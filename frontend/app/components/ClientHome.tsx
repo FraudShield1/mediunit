@@ -3,9 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe } from 'lucide-react';
+import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe, AlertCircle } from 'lucide-react';
+import EmptyState from './EmptyState';
+import Logo from './Logo';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import SupportSection from './SupportSection';
+import Fuse from 'fuse.js';
 
 interface ClientHomeProps {
     initialProducts: any[];
@@ -19,10 +23,15 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
 
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
-    const filteredProducts = initialProducts.filter(p =>
-        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const fuse = new Fuse(initialProducts, {
+        keys: ['name', 'sku', 'category.name', 'brand', 'brand_entity.name'],
+        threshold: 0.3,
+        distance: 100
+    });
+
+    const filteredProducts = searchQuery.trim()
+        ? fuse.search(searchQuery).map(result => result.item)
+        : initialProducts;
 
     const handleAddToCart = (e: React.MouseEvent, product: any) => {
         e.preventDefault();
@@ -44,38 +53,38 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
             {/* Header / Top Nav */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-gray-light/20">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-medical-blue rounded-lg flex items-center justify-center">
-                            <Activity className="text-white w-5 h-5" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-medical-blue-dark">MediUnit</span>
-                    </div>
+                    <Logo />
                     <div className="flex items-center gap-4">
                         {/* Language Switcher */}
                         <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10">
                             <button
                                 onClick={() => setLanguage('fr')}
+                                aria-label="Passer en français"
+                                aria-current={language === 'fr' ? 'true' : 'false'}
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'fr' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
                             >
                                 FR
                             </button>
                             <button
                                 onClick={() => setLanguage('en')}
+                                aria-label="Switch to English"
+                                aria-current={language === 'en' ? 'true' : 'false'}
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-all ${language === 'en' ? 'bg-medical-blue text-white shadow-sm' : 'text-slate-gray hover:text-medical-blue'}`}
                             >
                                 EN
                             </button>
                         </div>
 
-                        <Link href="/cart" className="p-2 relative text-slate-gray hover:text-medical-blue transition-colors">
-                            <ShoppingCart className="w-6 h-6" />
+                        <Link href="/cart" aria-label={t('Voir le panier', 'View cart')} title={t('Voir le panier', 'View cart')} className="p-2 relative text-slate-gray hover:text-medical-blue transition-colors">
+                            <ShoppingCart className="w-6 h-6" aria-hidden="true" />
+                            <span className="sr-only">{t('Voir le panier', 'View cart')}</span>
                             {cartCount > 0 && (
                                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-medical-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                                     {cartCount}
                                 </span>
                             )}
                         </Link>
-                        <Link href="/login" className="hidden md:flex items-center gap-2 text-slate-gray hover:text-medical-blue transition-colors">
+                        <Link href="/login" aria-label={t('Se connecter', 'Login')} className="hidden md:flex items-center gap-2 text-slate-gray hover:text-medical-blue transition-colors">
                             <User className="w-6 h-6" />
                             <span className="text-sm font-medium">{t('Se connecter', 'Login')}</span>
                         </Link>
@@ -94,16 +103,23 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                     </p>
 
                     <div className="relative max-w-3xl mx-auto z-50">
-                        <div className="relative group">
-                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-gray-light group-focus-within:text-medical-blue w-6 h-6 transition-colors" />
+                        <form
+                            className="relative group"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                ; (document.activeElement as HTMLElement)?.blur();
+                            }}
+                        >
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-gray-light w-6 h-6 transition-colors group-focus-within:text-medical-blue" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder={t('Rechercher seringues, masques, gants...', 'Search syringes, masks, gloves...')}
+                                aria-label={t('Rechercher des produits médicaux', 'Search medical products')}
                                 className="w-full h-16 md:h-24 pl-16 pr-6 rounded-[2rem] text-lg md:text-2xl border-none shadow-2xl shadow-medical-blue/10 focus:ring-4 focus:ring-medical-blue/5 transition-all outline-none bg-white"
                             />
-                        </div>
+                        </form>
 
                         {/* Search Autocomplete Suggestions */}
                         {searchQuery.length > 1 && (
@@ -118,7 +134,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-slate-gray-light/10 rounded-xl flex items-center justify-center overflow-hidden relative">
                                                     {product.image_url ? (
-                                                        <Image src={product.image_url} alt={product.name} fill className="object-cover" />
+                                                        <Image src={product.image_url} alt={product.name} fill sizes="40px" className="object-cover" />
                                                     ) : (
                                                         <Package className="w-5 h-5 text-slate-gray-light" />
                                                     )}
@@ -135,12 +151,12 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                         </Link>
                                     ))
                                 ) : (
-                                    <div className="px-8 py-10 text-center">
-                                        <div className="w-12 h-12 bg-slate-gray-light/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <Search className="w-6 h-6 text-slate-gray-light" />
-                                        </div>
-                                        <p className="text-slate-gray font-bold">{t(`Aucun produit trouvé pour "${searchQuery}"`, `No product found for "${searchQuery}"`)}</p>
-                                        <p className="text-[10px] text-slate-gray-light uppercase tracking-widest mt-1">{t('Essayez d\'autres termes ou vérifiez l\'orthographe', 'Try different keywords or check spelling')}</p>
+                                    <div className="py-4 px-2">
+                                        <EmptyState
+                                            icon={Search}
+                                            title={t('Aucun résultat', 'No results found')}
+                                            description={t(`Nous n'avons trouvé aucun produit correspondant à "${searchQuery}".`, `We couldn't find any products matching "${searchQuery}".`)}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -158,12 +174,13 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                             <Link
                                 key={cat.id}
                                 href={`/categories/${cat.slug}`}
+                                aria-label={t(`Voir la catégorie ${cat.name}`, `View category ${cat.name}`)}
                                 className="group flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-gray-light/10 hover:border-medical-blue hover:shadow-xl hover:shadow-medical-blue/5 transition-all w-40 text-center"
                             >
                                 <div className="w-12 h-12 rounded-2xl bg-medical-blue/5 flex items-center justify-center group-hover:bg-medical-blue group-hover:text-white transition-colors">
                                     <Package className="w-6 h-6" />
                                 </div>
-                                <span className="text-xs font-black uppercase tracking-tight text-slate-gray group-hover:text-medical-blue">
+                                <span className="text-xs font-black uppercase tracking-tight text-slate-gray-dark group-hover:text-medical-blue">
                                     {cat.name}
                                 </span>
                             </Link>
@@ -192,6 +209,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                                 src={product.image_url}
                                                 alt={product.name}
                                                 fill
+                                                sizes="(max-width: 768px) 50vw, 25vw"
                                                 className="object-contain p-6 group-hover:scale-110 transition-transform duration-500"
                                             />
                                         ) : (
@@ -209,9 +227,9 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                             </div>
                                         )}
                                     </div>
-                                    <h4 className="font-bold text-slate-gray-dark mb-1 line-clamp-2 h-10 overflow-hidden text-sm uppercase px-2">
+                                    <h3 className="font-bold text-slate-gray-dark mb-1 line-clamp-2 h-10 overflow-hidden text-sm uppercase px-2">
                                         {product.name}
-                                    </h4>
+                                    </h3>
                                     <p className="text-[10px] text-slate-gray mb-4 font-medium uppercase tracking-widest">SKU: {product.sku}</p>
                                 </Link>
 
@@ -222,15 +240,20 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                     </div>
                                     <button
                                         onClick={(e) => handleAddToCart(e, product)}
+                                        aria-label={t(`Ajouter ${product.name} au panier`, `Add ${product.name} to cart`)}
+                                        title={t(`Ajouter ${product.name} au panier`, `Add ${product.name} to cart`)}
                                         className="w-10 h-10 rounded-2xl bg-medical-blue/5 text-medical-blue flex items-center justify-center hover:bg-medical-blue hover:text-white transition-all transform active:scale-95 shadow-sm"
                                     >
-                                        <Plus className="w-6 h-6" />
+                                        <Plus className="w-6 h-6" aria-hidden="true" />
+                                        <span className="sr-only">{t('Ajouter au panier', 'Add to cart')}</span>
                                     </button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </section>
+
+                <SupportSection />
             </main>
         </div>
     );

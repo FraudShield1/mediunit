@@ -8,6 +8,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         const title = `${product.name} | MediUnit Clinical Sourcing`;
         const description = product.description.replace(/<[^>]*>?/gm, '').slice(0, 160);
         return {
+            metadataBase: new URL('https://mediunit-frontend.pages.dev'),
             title,
             description,
             openGraph: {
