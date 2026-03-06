@@ -7,6 +7,48 @@ async function hashPassword(password) {
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Minimal JWT Implementation using WebCrypto (HMAC-SHA256)
+async function base64UrlEncode(buffer) {
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function base64UrlDecode(str) {
+    const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64 + '==='.slice((str.length + 3) % 4));
+    return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
+}
+async function signJWT(payload, secret) {
+    const encoder = new TextEncoder();
+    const header = await base64UrlEncode(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+    const payloadStr = await base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+    const key = await crypto.subtle.importKey(
+        "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(`${header}.${payloadStr}`));
+    const signature = await base64UrlEncode(signatureBuffer);
+    return `${header}.${payloadStr}.${signature}`;
+}
+async function verifyJWT(token, secret) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
+        );
+        const isValid = await crypto.subtle.verify(
+            "HMAC", key, await base64UrlDecode(parts[2]), encoder.encode(`${parts[0]}.${parts[1]}`)
+        );
+        if (!isValid) return null;
+        const payload = JSON.parse(new TextDecoder().decode(await base64UrlDecode(parts[1])));
+        // Check expiry (if 'exp' exists)
+        if (payload.exp && Date.now() >= payload.exp * 1000) return null;
+        return payload;
+    } catch (e) {
+        return null;
+    }
+}
+
 async function isRateLimited(env, ip, limit, windowSeconds, keyPrefix) {
     if (!env.LIMITER) return false;
     const now = Math.floor(Date.now() / 1000);
@@ -369,8 +411,23 @@ export default {
                 });
             }
 
-            // --- ADMIN ROUTES ---
-            const isAdminPath = path.startsWith("/api/v1/admin/") || path.startsWith("/api/v1/orders/admin") || path.startsWith("/api/v1/users");
+            // --- PROTECTED ROUTES (Admin & User Dashboard) ---
+            const isProtectedRoute = path.startsWith("/api/v1/admin/") || path.startsWith("/api/v1/orders/admin") || path.startsWith("/api/v1/users");
+
+            let authUser = null;
+            if (isProtectedRoute) {
+                const authHeader = request.headers.get("Authorization");
+                if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+                }
+                const token = authHeader.split(" ")[1];
+                const jwtSecret = env.JWT_SECRET || "fallback_cloud_secret_2026_xyz123";
+                authUser = await verifyJWT(token, jwtSecret);
+
+                if (!authUser) {
+                    return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 403, headers: corsHeaders });
+                }
+            }
 
             if (path === "/api/v1/orders/admin/all" && request.method === "GET") {
                 const { results } = await env.DB.prepare("SELECT * FROM \"order\" ORDER BY created_at DESC").all();
@@ -456,7 +513,17 @@ export default {
                 const hashedPassword = await hashPassword(body.password);
                 const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(body.username, hashedPassword).first();
                 if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
-                return new Response(JSON.stringify({ token: "stub-token-" + user.id, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+
+                // Sign a real JWT valid for 24 hours
+                const jwtSecret = env.JWT_SECRET || "fallback_cloud_secret_2026_xyz123";
+                const token = await signJWT({
+                    sub: user.id,
+                    email: user.email,
+                    role: user.role || 'user',
+                    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+                }, jwtSecret);
+
+                return new Response(JSON.stringify({ token, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
             if (path.startsWith("/api/v1/brands/") && request.method === "PUT") {

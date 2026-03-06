@@ -1,5 +1,23 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
 
+// Helper to get token natively from localStorage (Zustand persists it here)
+function getAuthToken() {
+    if (typeof window === 'undefined') return null;
+    try {
+        const storage = localStorage.getItem('auth-storage');
+        if (storage) {
+            const parsed = JSON.parse(storage);
+            return parsed.state?.token || null;
+        }
+    } catch (e) { console.error('Error reading auth string', e); }
+    return null;
+}
+
+function getAuthHeaders(): HeadersInit {
+    const token = getAuthToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 export async function login(email: string, password: string) {
     const params = new URLSearchParams();
     params.append('username', email);
@@ -62,7 +80,7 @@ export async function fetchProductBySlug(slug: string) {
 // Admin Exports
 export async function fetchAdminOrders() {
     const res = await fetch(`${API_URL}/orders/admin/all`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch admin orders');
     return res.json();
@@ -70,7 +88,7 @@ export async function fetchAdminOrders() {
 
 export async function fetchAdminUsers() {
     const res = await fetch(`${API_URL}/users/`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch admin users');
     return res.json();
@@ -79,7 +97,7 @@ export async function fetchAdminUsers() {
 export async function updateOrderStatus(orderId: string, status: string) {
     const res = await fetch(`${API_URL}/orders/${orderId}/status?status=${status}`, {
         method: 'PATCH',
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to update order status');
     return res.json();
@@ -88,7 +106,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 // User Dashboard Exports
 export async function fetchDashboardSummary() {
     const res = await fetch(`${API_URL}/dashboard/`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch dashboard summary');
     return res.json();
@@ -96,7 +114,7 @@ export async function fetchDashboardSummary() {
 
 export async function fetchComplianceDocuments() {
     const res = await fetch(`${API_URL}/dashboard/compliance`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch compliance documents');
     return res.json();
@@ -105,7 +123,7 @@ export async function fetchComplianceDocuments() {
 export async function reorderLastOrder() {
     const res = await fetch(`${API_URL}/dashboard/reorder-last`, {
         method: 'POST',
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to reorder last order');
     return res.json();
@@ -116,7 +134,7 @@ export async function uploadVerificationLicense(file: File) {
     formData.append('file', file);
     const res = await fetch(`${API_URL}/users/verify-upload`, {
         method: 'POST',
-        credentials: 'include',
+        headers: getAuthHeaders(),
         body: formData
     });
     if (!res.ok) throw new Error('Failed to upload medical license');
@@ -126,7 +144,7 @@ export async function uploadVerificationLicense(file: File) {
 export async function verifyUser(userId: string) {
     const res = await fetch(`${API_URL}/users/${userId}/verify`, {
         method: 'PATCH',
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to verify user');
     return res.json();
@@ -136,9 +154,9 @@ export async function createOrder(orderData: any) {
     const res = await fetch(`${API_URL}/orders/`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
         },
-        credentials: 'include',
         body: JSON.stringify(orderData)
     });
     if (!res.ok) throw new Error('Failed to create order');
@@ -147,7 +165,7 @@ export async function createOrder(orderData: any) {
 
 export async function fetchOrderInvoice(orderId: string) {
     const res = await fetch(`${API_URL}/orders/${orderId}/invoice`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch invoice');
     return res.json(); // Note: Changed back to json as per previous refactor where backend returns JSON for client-side PDF
@@ -155,7 +173,7 @@ export async function fetchOrderInvoice(orderId: string) {
 
 export async function fetchCompliancePack(orderId: string) {
     const res = await fetch(`${API_URL}/compliance/pack/${orderId}`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch compliance pack');
     return res.blob();
@@ -165,8 +183,7 @@ export async function fetchCompliancePack(orderId: string) {
 export async function createProduct(productData: any) {
     const res = await fetch(`${API_URL}/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(productData)
     });
     if (!res.ok) throw new Error('Failed to create product');
@@ -176,8 +193,7 @@ export async function createProduct(productData: any) {
 export async function updateProduct(productId: string, productData: any) {
     const res = await fetch(`${API_URL}/products/${productId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(productData)
     });
     if (!res.ok) throw new Error('Failed to update product');
@@ -187,7 +203,7 @@ export async function updateProduct(productId: string, productData: any) {
 export async function deleteProduct(productId: string) {
     const res = await fetch(`${API_URL}/products/${productId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to delete product');
     return res.json();
@@ -202,8 +218,7 @@ export async function fetchBrands() {
 export async function updateBrand(brandId: number, brandData: any) {
     const res = await fetch(`${API_URL}/brands/${brandId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(brandData)
     });
     if (!res.ok) throw new Error('Failed to update brand');
@@ -212,7 +227,7 @@ export async function updateBrand(brandId: number, brandData: any) {
 
 export async function fetchAdminStats() {
     const res = await fetch(`${API_URL}/dashboard/`, {
-        credentials: 'include'
+        headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch stats');
     return res.json();
