@@ -26,7 +26,7 @@ import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 
 export default function ProductClient({ slug, initialData }: { slug: string, initialData?: any }) {
-    const { language, setLanguage, t } = useLanguageStore();
+    const { language, setLanguage, t, translateProduct } = useLanguageStore();
     const [product, setProduct] = useState<any>(initialData || null);
     const [loading, setLoading] = useState(!initialData);
     const [quantity, setQuantity] = useState(1);
@@ -110,7 +110,8 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
     };
 
     const addToCart = () => {
-        const displayName = selectedVariant ? `${product.name} (${selectedVariant})` : product.name;
+        const translatedName = translateProduct(product.name);
+        const displayName = selectedVariant ? `${translatedName} (${selectedVariant})` : translatedName;
         addItem({
             id: product.id + (selectedVariant || ''),
             productId: product.id,
@@ -255,7 +256,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                         </div>
                                     )}
                                     <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">
-                                        {product.brand_entity?.name || product.brand}
+                                        {translateProduct(product.brand_entity?.name || product.brand)}
                                     </span>
                                 </div>
                             )}
@@ -263,6 +264,10 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
 
                         <div className="mb-12 bg-white rounded-[2rem] p-8 border border-slate-gray-light/10 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-medical-blue/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+
+                            <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark tracking-tight leading-tight mb-4">
+                                {translateProduct(product.name)}
+                            </h1>
 
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-gray-light mb-6">{t('Tarification Professionnelle', 'Professional Pricing')}</h3>
                             <div className="flex items-baseline gap-2 mb-6">
@@ -318,7 +323,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                                 </div>
                                 <button
                                     onClick={addToCart}
-                                    aria-label={t(`Ajouter ${quantity}x ${product.name} au panier`, `Add ${quantity}x ${product.name} to cart`)}
+                                    aria-label={t(`Ajouter ${quantity}x au panier`, `Add ${quantity}x to cart`)}
                                     className="flex-1 btn-primary h-14 text-lg relative group shadow-xl shadow-medical-blue/20 hover:shadow-medical-blue/40 transition-all font-black"
                                 >
                                     <span>{t('AJOUTER AU PANIER', 'ADD TO CART')} - MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount) * quantity).toFixed(2)}</span>

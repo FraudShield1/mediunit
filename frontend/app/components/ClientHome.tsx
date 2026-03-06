@@ -20,7 +20,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const { language, setLanguage, t } = useLanguageStore();
+    const { language, setLanguage, t, translateProduct } = useLanguageStore();
     const { items, addItem, openCart } = useCartStore();
 
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -178,7 +178,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-gray-dark group-hover:text-medical-blue transition-colors">{product.name}</p>
+                                                    <p className="font-bold text-slate-gray-dark group-hover:text-medical-blue transition-colors">{translateProduct(product.name)}</p>
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-[10px] text-slate-gray uppercase font-medium">{product.sku}</p>
                                                         {product.packaging_type && <span className="text-[8px] bg-medical-blue/5 text-medical-blue px-1.5 rounded font-black">{product.packaging_type}</span>}
@@ -221,7 +221,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                         <Image src={imageUrl} alt={cat.name} fill sizes="200px" className="object-cover group-hover:opacity-90 transition-opacity" />
                                     </div>
                                     <span className="text-xs font-black uppercase tracking-tight text-slate-gray-dark group-hover:text-medical-blue leading-tight mb-2">
-                                        {cat.name}
+                                        {translateProduct(cat.name)}
                                     </span>
                                 </Link>
                             );
@@ -268,8 +268,8 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                             </div>
                                         )}
                                     </div>
-                                    <h3 className="font-bold text-slate-gray-dark mb-1 line-clamp-2 h-10 overflow-hidden text-sm uppercase px-2">
-                                        {product.name}
+                                    <h3 className="font-black text-slate-gray-dark leading-tight line-clamp-2 md:text-lg mb-4">
+                                        {translateProduct(product.name)}
                                     </h3>
                                     <p className="text-[10px] text-slate-gray mb-4 font-medium uppercase tracking-widest">SKU: {product.sku}</p>
                                 </Link>

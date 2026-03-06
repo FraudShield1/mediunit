@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 export default function CartDrawer() {
     const { items, isCartOpen, closeCart, removeItem, updateQuantity } = useCartStore();
-    const { t } = useLanguageStore();
+    const { t, translateProduct } = useLanguageStore();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -92,7 +92,7 @@ export default function CartDrawer() {
                                     </div>
                                     <div className="flex-1 flex flex-col justify-between">
                                         <div>
-                                            <h3 className="text-sm font-bold text-slate-gray-dark leading-tight line-clamp-2">{item.name}</h3>
+                                            <h3 className="text-sm font-bold text-slate-gray-dark leading-tight line-clamp-2">{translateProduct(item.name)}</h3>
                                             <p className="text-[10px] text-slate-gray uppercase mt-1">{item.sku}</p>
                                         </div>
                                         <div className="flex items-end justify-between mt-2">
