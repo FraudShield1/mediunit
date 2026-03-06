@@ -100,17 +100,35 @@ export default function CheckoutPage() {
     return (
         <div className="min-h-screen bg-clinic-white py-12 px-4 md:py-20">
             <div className="max-w-6xl mx-auto">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
                     <div>
-                        <h1 className="text-4xl md:text-5xl font-black text-slate-gray-dark tracking-tight">{t('Finalisation', 'Checkout')}</h1>
-                        <p className="text-slate-gray mt-2 text-lg font-medium">{t('Validation de votre commande professionnelle MediUnit.', 'Validation of your professional MediUnit order.')}</p>
+                        <h1 className="text-4xl md:text-5xl font-black text-slate-gray-dark tracking-tight mb-2">{t('Finalisation', 'Checkout')}</h1>
+                        <p className="text-slate-gray text-lg font-medium">{t('Validation de votre commande professionnelle MediUnit.', 'Validation of your professional MediUnit order.')}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-sm font-bold text-slate-gray">
-                        <span className="flex items-center gap-2 text-medical-blue"><CheckCircle2 className="w-5 h-5" /> {t('Panier', 'Cart')}</span>
-                        <div className="w-8 h-px bg-slate-gray-light/30"></div>
-                        <span className="flex items-center gap-2 text-medical-blue"><CheckCircle2 className="w-5 h-5" /> {t('Livraison', 'Shipping')}</span>
-                        <div className="w-8 h-px bg-slate-gray-light/30"></div>
-                        <span className="text-slate-gray-light">{t('Confirmation', 'Confirmation')}</span>
+                    {/* B2B Premium Progress Indicator */}
+                    <div className="flex items-center">
+                        <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-medical-blue text-white font-black text-sm shadow-md shadow-medical-blue/20">
+                                <CheckCircle2 className="w-5 h-5" />
+                            </span>
+                            <span className="text-sm font-black text-slate-gray-dark hidden md:block">{t('Panier', 'Cart')}</span>
+                        </div>
+                        <div className="w-8 md:w-16 h-1 bg-medical-blue/20 rounded-full mx-3 relative">
+                            <div className="absolute inset-0 bg-medical-blue rounded-full w-full"></div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-medical-blue text-white font-black text-sm shadow-md shadow-medical-blue/20 ring-4 ring-medical-blue/10">
+                                2
+                            </span>
+                            <span className="text-sm font-black text-medical-blue hidden md:block">{t('Informations', 'Details')}</span>
+                        </div>
+                        <div className="w-8 md:w-16 h-1 bg-slate-gray-light/20 rounded-full mx-3"></div>
+                        <div className="flex items-center gap-3 opacity-50">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-clinic-white border-2 border-slate-gray-light/20 text-slate-gray font-black text-sm">
+                                3
+                            </span>
+                            <span className="text-sm font-bold text-slate-gray hidden md:block">{t('Confirmation', 'Confirmation')}</span>
+                        </div>
                     </div>
                 </div>
 

@@ -24,6 +24,7 @@ import SupportSection from '@/app/components/SupportSection';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
+import MedicalPlaceholder from '@/app/components/MedicalPlaceholder';
 
 export default function ProductClient({ slug, initialData }: { slug: string, initialData?: any }) {
     const { language, setLanguage, t, translateProduct } = useLanguageStore();
@@ -196,15 +197,21 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                     {/* Image Section */}
                     <div className="space-y-6">
-                        <div className="bg-white rounded-[3rem] p-8 shadow-2xl shadow-medical-blue/5 overflow-hidden ring-1 ring-slate-gray-light/10 relative aspect-square group">
-                            <Image
-                                src={product.image_url || "https://via.placeholder.com/600?text=Product+Image"}
-                                alt={product.name}
-                                fill
-                                sizes="(max-width: 1024px) 100vw, 50vw"
-                                className="object-contain p-8 group-hover:scale-105 transition-transform duration-500"
-                                priority={true}
-                            />
+                        <div className="bg-white rounded-[3rem] p-8 shadow-2xl shadow-medical-blue/5 overflow-hidden ring-1 ring-slate-gray-light/10 relative aspect-square group flex items-center justify-center">
+                            {product.image_url ? (
+                                <Image
+                                    src={product.image_url}
+                                    alt={product.name}
+                                    fill
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
+                                    className="object-contain p-8 group-hover:scale-105 transition-transform duration-500"
+                                    priority={true}
+                                />
+                            ) : (
+                                <div className="w-1/2 h-1/2 text-medical-blue/20">
+                                    <MedicalPlaceholder />
+                                </div>
+                            )}
                             {/* Stock Indicator */}
                             <div className="absolute top-8 left-8 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full border border-sage-green/20 shadow-lg">
                                 <div className="w-2 h-2 bg-sage-green rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
@@ -276,22 +283,32 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                             </div>
 
                             {/* Variant Selection (If Multi-Size) */}
-                            {variants.length > 0 && (
-                                <div className="mb-8 p-4 bg-slate-gray-light/5 rounded-2xl border border-dashed border-slate-gray-light/20">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-gray mb-3 pb-2 border-b border-slate-gray-light/10">{t('Sélectionner la Taille / Variante', 'Select Size / Variant')}</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {variants.map((v) => (
+                            <div className="mb-8 p-6 bg-clinic-white rounded-3xl border border-medical-blue/10 shadow-sm relative">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-gray">{t('Sélectionner la Variante', 'Select Variant')}</p>
+                                    <span className="text-[10px] font-bold text-medical-blue bg-medical-blue/10 px-2 py-1 rounded-md">{variants.length} {t('Options', 'Options')}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    {variants.map((v) => {
+                                        const isSelected = selectedVariant === v;
+                                        return (
                                             <button
                                                 key={v}
                                                 onClick={() => setSelectedVariant(v)}
-                                                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${selectedVariant === v ? 'bg-medical-blue text-white shadow-lg shadow-medical-blue/20 scale-105' : 'bg-white text-slate-gray border border-slate-gray-light/20 hover:border-medical-blue'}`}
+                                                className={`relative px-5 py-3 rounded-2xl text-sm font-black transition-all duration-300 flex items-center gap-2 overflow-hidden
+                                                        ${isSelected
+                                                        ? 'bg-medical-blue text-white shadow-xl shadow-medical-blue/20 ring-2 ring-medical-blue ring-offset-2'
+                                                        : 'bg-white text-slate-gray border border-slate-gray-light/20 hover:border-medical-blue/50 hover:bg-medical-blue/5 hover:text-medical-blue'
+                                                    }`}
                                             >
-                                                {v}
+                                                {isSelected && <div className="absolute inset-0 bg-white/20 blur-md"></div>}
+                                                {isSelected && <CheckCircle2 className="w-4 h-4 relative z-10" />}
+                                                <span className="relative z-10">{v}</span>
                                             </button>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
+                            </div>
 
                             {/* Tiered Pricing Upsell */}
                             <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-3 ${getDiscountInfo(quantity).discount > 0 ? 'bg-sage-green/10 border-sage-green/20 text-sage-green-dark' : 'bg-medical-blue/5 border-medical-blue/10 text-medical-blue'}`}>
