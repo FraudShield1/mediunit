@@ -18,6 +18,8 @@ interface ClientHomeProps {
 
 export default function ClientHome({ initialProducts, initialCategories }: ClientHomeProps) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const { language, setLanguage, t } = useLanguageStore();
     const { items, addItem } = useCartStore();
 
@@ -29,8 +31,35 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
         distance: 100
     });
 
+    React.useEffect(() => {
+        if (searchQuery.trim().length < 2) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        const timer = setTimeout(async () => {
+            try {
+                // Fetch from the Edge API
+                const url = `https://mediunit-backend.a-naouri.workers.dev/api/v1/products?search=${encodeURIComponent(searchQuery)}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    setSearchResults(data);
+                }
+            } catch (error) {
+                console.error('Search debouncing error:', error);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Use Fuse for instant UI feedback, override with Server results once loaded
     const filteredProducts = searchQuery.trim()
-        ? fuse.search(searchQuery).map(result => result.item)
+        ? (searchResults.length > 0 ? searchResults : fuse.search(searchQuery).map(result => result.item))
         : initialProducts;
 
     const handleAddToCart = (e: React.MouseEvent, product: any) => {
