@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
+import Footer from './components/Footer';
+import BottomNav from './components/BottomNav';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -103,7 +105,11 @@ export default function RootLayout({
             </head>
             <body className="font-sans antialiased">
                 <Toaster position="top-center" reverseOrder={false} />
-                {children}
+                <div className="min-h-screen flex flex-col">
+                    <div className="flex-1">{children}</div>
+                    <Footer />
+                    <BottomNav />
+                </div>
                 <BackToTop />
             </body>
         </html>

@@ -16,8 +16,6 @@ import {
     Info,
     Activity
 } from 'lucide-react';
-import Footer from '@/app/components/Footer';
-import BottomNav from '@/app/components/BottomNav';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useAuthStore } from '@/app/store/useAuthStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
@@ -450,8 +448,6 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                 </div>
                 <SupportSection productContext={`${product.name} (SKU: ${product.sku})`} />
             </main>
-            <Footer />
-            <BottomNav />
             <ComplianceGateModal
                 isOpen={isGateOpen}
                 onClose={() => setIsGateOpen(false)}

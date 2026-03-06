@@ -1,8 +1,6 @@
 import React from 'react';
 import { fetchProducts, fetchCategories } from '@/app/lib/api';
 import ClientHome from '@/app/components/ClientHome';
-import Footer from '@/app/components/Footer';
-import BottomNav from '@/app/components/BottomNav';
 
 export const metadata = {
     title: 'MediUnit | Fournisseur Médical B2B Casablanca - Gants, Seringues, Kits Cliniques',
@@ -47,8 +45,6 @@ export default async function LandingPage() {
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(medicalBusinessJsonLd) }}
             />
             <ClientHome initialProducts={products} initialCategories={categories} />
-            <Footer />
-            <BottomNav />
         </>
     );
 }
