@@ -48,7 +48,7 @@ export default function ComplianceGateModal({ isOpen, onClose, documentType }: C
                     </h2>
 
                     <p className="text-slate-gray font-medium leading-relaxed mb-8">
-                        {t('Le document ', 'The document ')}<span className="text-medical-blue font-bold tracking-tight">"{documentType}"</span>{t(' est une ressource professionnelle réservée aux clients enregistrés.', ' is a professional resource reserved for registered clients.')}
+                        {t('Le document ', 'The document ')}<span className="text-medical-blue font-bold tracking-tight">&quot;{documentType}&quot;</span>{t(' est une ressource professionnelle réservée aux clients enregistrés.', ' is a professional resource reserved for registered clients.')}
                         <br />
                         <span className="text-xs mt-2 block opacity-70">{t('Conformément aux régulations de l\'ANPMP et du Ministère de la Santé.', 'In accordance with the regulations of the ANPMP and the Ministry of Health.')}</span>
                     </p>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     ShoppingCart,
     ArrowLeft,
@@ -56,33 +56,36 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
         }
     }
 
-    let variants: string[] = [];
-    if (typeof variantData === 'string') {
-        if (variantData.includes(',')) variants = variantData.split(',').map(v => v.trim());
-        else if (variantData.includes(';')) variants = variantData.split(';').map(v => v.trim());
-        else if (variantData.includes('/')) variants = variantData.split('/').map(v => v.trim());
-        else if (variantData.trim().length > 0) variants = [variantData.trim()];
-    } else if (Array.isArray(variantData)) {
-        variants = variantData.map(v => String(v));
-    }
-
-    // Forcefully inject generic variants if product name implies it but DB specs failed to parse a list
-    if (variants.length === 0 && product?.name?.includes('(Multi-Tailles)')) {
-        // Look into Caractéristiques for " à " ranges
-        const chars = String(dynamicSpecs['Caractéristiques'] || '');
-        if (chars.includes(' à ') && chars.includes('G')) {
-            variants = ['18G', '19G', '20G', '21G', '22G', '23G', '25G'];
-        } else if (product.name.includes('Sonde') || product.name.includes('Canule')) {
-            variants = ['CH08', 'CH10', 'CH12', 'CH14', 'CH16', 'CH18'];
-        } else if (product.name.includes('Gant')) {
-            variants = ['S', 'M', 'L', 'XL'];
-        } else if (product.name.includes('Masque Laryngé')) {
-            variants = ['Taille 1', 'Taille 2', 'Taille 3', 'Taille 4', 'Taille 5'];
-        } else {
-            // Ultimate fallback so the user can at least select *something*
-            variants = ['Standard', 'Large', 'Extra Large'];
+    const variants = useMemo(() => {
+        let vars: string[] = [];
+        if (typeof variantData === 'string') {
+            if (variantData.includes(',')) vars = variantData.split(',').map(v => v.trim());
+            else if (variantData.includes(';')) vars = variantData.split(';').map(v => v.trim());
+            else if (variantData.includes('/')) vars = variantData.split('/').map(v => v.trim());
+            else if (variantData.trim().length > 0) vars = [variantData.trim()];
+        } else if (Array.isArray(variantData)) {
+            vars = variantData.map(v => String(v));
         }
-    }
+
+        // Forcefully inject generic variants if product name implies it but DB specs failed to parse a list
+        if (vars.length === 0 && product?.name?.includes('(Multi-Tailles)')) {
+            // Look into Caractéristiques for " à " ranges
+            const chars = String(dynamicSpecs['Caractéristiques'] || '');
+            if (chars.includes(' à ') && chars.includes('G')) {
+                vars = ['18G', '19G', '20G', '21G', '22G', '23G', '25G'];
+            } else if (product?.name?.includes('Sonde') || product?.name?.includes('Canule')) {
+                vars = ['CH08', 'CH10', 'CH12', 'CH14', 'CH16', 'CH18'];
+            } else if (product?.name?.includes('Gant')) {
+                vars = ['S', 'M', 'L', 'XL'];
+            } else if (product?.name?.includes('Masque Laryngé')) {
+                vars = ['Taille 1', 'Taille 2', 'Taille 3', 'Taille 4', 'Taille 5'];
+            } else {
+                // Ultimate fallback so the user can at least select *something*
+                vars = ['Standard', 'Large', 'Extra Large'];
+            }
+        }
+        return vars;
+    }, [variantData, product?.name, dynamicSpecs]);
 
     useEffect(() => {
         if (variants.length > 0 && !selectedVariant) {
