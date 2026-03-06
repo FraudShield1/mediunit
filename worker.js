@@ -1,5 +1,12 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + "MediUnit_S4L7_2026!");
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function isRateLimited(env, ip, limit, windowSeconds, keyPrefix) {
     if (!env.LIMITER) return false;
     const now = Math.floor(Date.now() / 1000);
@@ -51,6 +58,38 @@ export default {
         try {
             const url = new URL(request.url);
             const path = url.pathname;
+
+            if (path.startsWith("/api/v1/images/")) {
+                let key = path.replace("/api/v1/images/", "");
+                try {
+                    // Try to decode URI component in case it's url-encoded
+                    key = decodeURIComponent(key);
+                    const object = await env.STORAGE.get(key);
+                    if (!object) {
+                        return new Response("Image not found", { status: 404, headers: corsHeaders });
+                    }
+                    const headers = new Headers();
+                    object.writeHttpMetadata(headers);
+                    headers.set("etag", object.httpEtag);
+
+                    // Fallback content-type if missing
+                    if (!headers.has("content-type")) {
+                        const ext = key.split('.').pop()?.toLowerCase();
+                        let cType = "image/jpeg";
+                        if (ext === "png") cType = "image/png";
+                        if (ext === "svg") cType = "image/svg+xml";
+                        headers.set("content-type", cType);
+                    }
+
+                    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+                    for (const [k, v] of Object.entries(corsHeaders)) {
+                        headers.set(k, v);
+                    }
+                    return new Response(object.body, { headers });
+                } catch (err) {
+                    return new Response("Error fetching image", { status: 500, headers: corsHeaders });
+                }
+            }
 
             if (path === "/api/v1/categories") {
                 const { results } = await env.DB.prepare("SELECT * FROM category").all();
@@ -414,7 +453,8 @@ export default {
 
             if (path === "/api/v1/auth/login" && request.method === "POST") {
                 const body = await request.json();
-                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(body.username, body.password).first();
+                const hashedPassword = await hashPassword(body.password);
+                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(body.username, hashedPassword).first();
                 if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
                 return new Response(JSON.stringify({ token: "stub-token-" + user.id, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
@@ -436,11 +476,12 @@ export default {
                 const id = crypto.randomUUID();
 
                 // Store user with 'pending' status
+                const hashedPassword = await hashPassword(body.password);
                 await env.DB.prepare(`
                     INSERT INTO user (id, email, hashed_password, full_name, clinic_name, specialty, inpe_number, city, verification_status, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
                 `).bind(
-                    id, body.email, body.password, body.full_name || '',
+                    id, body.email, hashedPassword, body.full_name || '',
                     body.clinic_name || '', body.specialty || '',
                     body.inpe_number || '', body.city || 'Casablanca'
                 ).run();

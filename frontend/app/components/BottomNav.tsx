@@ -14,7 +14,6 @@ export default function BottomNav() {
         { icon: Home, label: t('Accueil', 'Home'), href: '/' },
         { icon: Search, label: t('Chercher', 'Search'), href: '/search' },
         { icon: ShoppingCart, label: t('Ma Commande', 'My Order'), href: '/cart' },
-        { icon: RefreshCcw, label: t('Réappro', 'Reorder'), href: '/dashboard' },
         { icon: User, label: t('Mon Espace', 'My Account'), href: '/dashboard' },
     ];
 
