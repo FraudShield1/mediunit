@@ -89,7 +89,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
         }
     }, [variants, selectedVariant]);
 
-    const { addItem } = useCartStore();
+    const { addItem, openCart } = useCartStore();
     const { isLoggedIn } = useAuthStore();
 
     const handleDownload = (type: string, url: string) => {
@@ -121,6 +121,7 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
             quantity: quantity,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
+        openCart();
         toast.success(`${quantity}x ${displayName} (${product.packaging_type || 'Unité'}) ${t('ajouté(s) au panier !', 'added to cart!')}`);
     };
 

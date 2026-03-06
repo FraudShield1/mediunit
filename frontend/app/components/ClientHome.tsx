@@ -21,7 +21,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const { language, setLanguage, t } = useLanguageStore();
-    const { items, addItem } = useCartStore();
+    const { items, addItem, openCart } = useCartStore();
 
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -74,7 +74,16 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
             quantity: 1,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        // We'll skip the alert for now as it's a bit intrusive, but keep it if requested
+        openCart();
+    };
+
+    const categoryImages: Record<string, string> = {
+        'anesthesie': '/images/quincke_19g_cream.png',
+        'urologie': '/images/Generic_Rusch.jpg',
+        'orl': '/images/Subglottic_Tube.png',
+        'chirurgie-generale': '/images/Set.png',
+        'reanimation': '/images/Reinforced_Tube.jpg',
+        'gastro-enterologie': '/images/AB_Tube.jpg'
     };
 
     return (
@@ -199,21 +208,24 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                         {t('Piliers Cliniques', 'Clinical Pillars')}
                     </h2>
                     <div className="flex flex-wrap justify-center gap-4 max-w-5xl mx-auto">
-                        {initialCategories.filter(cat => cat.slug !== 'unknown').map((cat) => (
-                            <Link
-                                key={cat.id}
-                                href={`/categories/${cat.slug}`}
-                                aria-label={t(`Voir la catégorie ${cat.name}`, `View category ${cat.name}`)}
-                                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-gray-light/10 hover:border-medical-blue hover:shadow-xl hover:shadow-medical-blue/5 transition-all w-40 text-center"
-                            >
-                                <div className="w-12 h-12 rounded-2xl bg-medical-blue/5 flex items-center justify-center group-hover:bg-medical-blue group-hover:text-white transition-colors">
-                                    <Package className="w-6 h-6" />
-                                </div>
-                                <span className="text-xs font-black uppercase tracking-tight text-slate-gray-dark group-hover:text-medical-blue">
-                                    {cat.name}
-                                </span>
-                            </Link>
-                        ))}
+                        {initialCategories.filter(cat => cat.slug !== 'unknown').map((cat) => {
+                            const imageUrl = categoryImages[cat.slug] || '/images/Pencil Points different colours.jpeg';
+                            return (
+                                <Link
+                                    key={cat.id}
+                                    href={`/categories/${cat.slug}`}
+                                    aria-label={t(`Voir la catégorie ${cat.name}`, `View category ${cat.name}`)}
+                                    className="group flex flex-col items-center gap-3 p-4 bg-white rounded-[2rem] border border-slate-gray-light/10 hover:border-medical-blue hover:shadow-xl hover:shadow-medical-blue/5 transition-all w-48 text-center"
+                                >
+                                    <div className="w-full aspect-video rounded-3xl bg-slate-gray-light/5 flex items-center justify-center overflow-hidden relative group-hover:scale-105 transition-transform duration-500">
+                                        <Image src={imageUrl} alt={cat.name} fill sizes="200px" className="object-cover group-hover:opacity-90 transition-opacity" />
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-tight text-slate-gray-dark group-hover:text-medical-blue leading-tight mb-2">
+                                        {cat.name}
+                                    </span>
+                                </Link>
+                            );
+                        })}
                     </div>
                 </section>
 

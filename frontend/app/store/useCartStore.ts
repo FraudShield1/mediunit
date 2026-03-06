@@ -14,16 +14,24 @@ export interface CartItem {
 
 interface CartStore {
     items: CartItem[];
+    isCartOpen: boolean;
     addItem: (item: CartItem) => void;
     removeItem: (id: string) => void;
     updateQuantity: (id: string, delta: number) => void;
     clearCart: () => void;
+    openCart: () => void;
+    closeCart: () => void;
+    toggleCart: () => void;
 }
 
 export const useCartStore = create<CartStore>()(
     persist(
         (set) => ({
             items: [],
+            isCartOpen: false,
+            openCart: () => set({ isCartOpen: true }),
+            closeCart: () => set({ isCartOpen: false }),
+            toggleCart: () => set((state) => ({ isCartOpen: !state.isCartOpen })),
             addItem: (newItem) => set((state) => {
                 const existingItem = state.items.find((item) => item.id === newItem.id);
                 if (existingItem) {

@@ -3,6 +3,7 @@ import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
 import Footer from './components/Footer';
 import BottomNav from './components/BottomNav';
+import CartDrawer from './components/CartDrawer';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -110,6 +111,7 @@ export default function RootLayout({
                     <Footer />
                     <BottomNav />
                 </div>
+                <CartDrawer />
                 <BackToTop />
             </body>
         </html>
