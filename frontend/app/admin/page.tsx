@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
     LayoutDashboard, ShoppingCart, Users, TrendingUp, Search, Filter,
     CheckCircle2, Clock, Package, ChevronDown, Plus, Edit2, Trash2, X, FileText, ShieldCheck
@@ -344,7 +345,15 @@ export default function AdminDashboard() {
                                         <tr key={product.id} className="hover:bg-gray-50/50 group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <img src={product.image_url} alt="" className="w-10 h-10 object-contain bg-gray-50 rounded" />
+                                                    {product.image_url ? (
+                                                        <div className="relative w-10 h-10 bg-gray-50 rounded overflow-hidden flex-shrink-0">
+                                                            <Image src={product.image_url} alt="" fill sizes="40px" className="object-contain" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-10 h-10 bg-gray-50 rounded flex items-center justify-center flex-shrink-0">
+                                                            <Package className="w-5 h-5 text-gray-400" />
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <div className="font-semibold text-gray-900 leading-none mb-1">{product.name}</div>
                                                         <div className="text-gray-400 text-xs">{product.category_name}</div>
@@ -480,9 +489,9 @@ export default function AdminDashboard() {
                                         <tr key={brand.id} className="hover:bg-gray-50/50 group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 p-1">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 p-1 relative overflow-hidden flex-shrink-0">
                                                         {brand.logo_url ? (
-                                                            <img src={brand.logo_url} alt="" className="w-full h-full object-contain" />
+                                                            <Image src={brand.logo_url} alt="" fill sizes="48px" className="object-contain p-1" />
                                                         ) : (
                                                             <ShieldCheck className="w-6 h-6 text-gray-300" />
                                                         )}

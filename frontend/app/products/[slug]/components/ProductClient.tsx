@@ -26,7 +26,7 @@ import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import MedicalPlaceholder from '@/app/components/MedicalPlaceholder';
 
-export default function ProductClient({ slug, initialData }: { slug: string, initialData?: any }) {
+export default function ProductClient({ slug, initialData, relatedProducts = [] }: { slug: string, initialData?: any, relatedProducts?: any[] }) {
     const { language, setLanguage, t, translateProduct } = useLanguageStore();
     const [product, setProduct] = useState<any>(initialData || null);
     const [loading, setLoading] = useState(!initialData);
@@ -472,6 +472,57 @@ export default function ProductClient({ slug, initialData }: { slug: string, ini
                         </div>
                     </div>
                 </div>
+
+                {/* Related Products Carousel */}
+                {relatedProducts && relatedProducts.length > 0 && (
+                    <div className="mt-24 border-t border-slate-gray-light/10 pt-16">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 gap-4">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-gray-dark tracking-tight">{t('Produits Similaires', 'Related Products')}</h3>
+                                <p className="text-slate-gray mt-2">{t('Essentiel pour votre plateau technique', 'Essential for your technical platform')}</p>
+                            </div>
+                            {product.category?.slug && (
+                                <Link href={`/categories/${product.category.slug}`} className="text-medical-blue font-bold text-sm uppercase tracking-widest hover:underline flex items-center gap-1 group">
+                                    {t('Voir la catégorie', 'See category')} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {relatedProducts.map((p: any) => (
+                                <Link key={p.id} href={`/products/${p.slug}`} className="group bg-white rounded-3xl p-6 border border-slate-gray-light/10 shadow-sm hover:shadow-xl hover:shadow-medical-blue/5 hover:border-medical-blue/20 transition-all duration-300 flex flex-col h-full">
+                                    <div className="relative w-full aspect-square mb-6 bg-clinic-white rounded-2xl flex items-center justify-center overflow-hidden">
+                                        {p.image_url ? (
+                                            <Image
+                                                src={p.image_url}
+                                                alt={p.name}
+                                                fill
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                                className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-12 h-12 text-medical-blue/20">
+                                                <MedicalPlaceholder />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 flex flex-col">
+                                        {(p.brand_entity?.name || p.brand) && (
+                                            <div className="text-[10px] font-black uppercase text-medical-blue mb-2 tracking-widest">{p.brand_entity?.name || p.brand}</div>
+                                        )}
+                                        <h4 className="font-bold text-slate-gray-dark line-clamp-2 leading-tight mb-4 flex-1">{translateProduct(p.name)}</h4>
+                                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-gray-light/5">
+                                            <div className="text-sm font-black text-slate-gray-dark">MAD {p.base_unit_price}</div>
+                                            <div className="w-8 h-8 rounded-full bg-medical-blue/5 flex items-center justify-center group-hover:bg-medical-blue group-hover:text-white text-medical-blue transition-colors">
+                                                <Plus className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <SupportSection productContext={`${product.name} (SKU: ${product.sku})`} />
             </main>
             <ComplianceGateModal

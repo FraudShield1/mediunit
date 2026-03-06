@@ -62,8 +62,19 @@ export async function generateStaticParams() {
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
     let product = null;
+    let relatedProducts = [];
     try {
         product = await fetchProductBySlug(params.slug);
+
+        // Fetch related products from the same category
+        if (product && product.category && product.category.slug) {
+            const relatedResponse = await fetchProducts(product.category.slug);
+            const fetched = relatedResponse.data || relatedResponse.items || relatedResponse || [];
+            // Filter out current product and grab up to 4
+            relatedProducts = fetched
+                .filter((p: any) => p.slug !== params.slug)
+                .slice(0, 4);
+        }
     } catch (e) {
         return <div className="min-h-screen flex items-center justify-center">Produit introuvable</div>;
     }
@@ -86,23 +97,6 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
             price: product.base_unit_price,
             availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             itemCondition: 'https://schema.org/NewCondition',
-        },
-        aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: '4.9',
-            reviewCount: '24'
-        },
-        review: {
-            '@type': 'Review',
-            reviewRating: {
-                '@type': 'Rating',
-                ratingValue: '5',
-                bestRating: '5'
-            },
-            author: {
-                '@type': 'Organization',
-                name: 'Ultimed Group Clinics'
-            }
         }
     };
 
@@ -112,7 +106,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-            <ProductClient slug={params.slug} initialData={product} />
+            <ProductClient slug={params.slug} initialData={product} relatedProducts={relatedProducts} />
         </>
     );
 }
