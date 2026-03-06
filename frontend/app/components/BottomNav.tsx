@@ -12,7 +12,6 @@ export default function BottomNav() {
 
     const navItems = [
         { icon: Home, label: t('Accueil', 'Home'), href: '/' },
-        { icon: Search, label: t('Chercher', 'Search'), href: '/search' },
         { icon: ShoppingCart, label: t('Ma Commande', 'My Order'), href: '/cart' },
         { icon: User, label: t('Mon Espace', 'My Account'), href: '/dashboard' },
     ];
