@@ -86,6 +86,10 @@ export default function UserDashboard() {
     const handleReorder = async () => {
         try {
             const items = await reorderLastOrder();
+            if (!Array.isArray(items) || items.length === 0) {
+                toast.error(t("Aucune commande précédente trouvée.", "No previous order found."));
+                return;
+            }
             items.forEach((item: any) => {
                 addItem({
                     id: item.product_id,
@@ -95,7 +99,7 @@ export default function UserDashboard() {
                     price: item.price_per_unit_at_purchase,
                     basePrice: item.price_per_unit_at_purchase,
                     quantity: item.quantity,
-                    image: '/images/Pencil Points different colours.jpeg'
+                    image: '/images/medical_placeholder.svg'
                 });
             });
 

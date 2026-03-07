@@ -87,10 +87,20 @@ async function sendEmail(env, { to, subject, html }) {
 
 export default {
     async fetch(request, env) {
+        const allowedOrigins = [
+            'https://mediunit.ma',
+            'https://www.mediunit.ma',
+            'https://mediunit-frontend.pages.dev'
+        ];
+        const requestOrigin = request.headers.get('Origin') || '';
+        const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : 'https://mediunit.ma';
+
         const corsHeaders = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Origin": corsOrigin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
         };
 
         if (request.method === "OPTIONS") {
@@ -134,7 +144,7 @@ export default {
             }
 
             if (path === "/api/v1/categories") {
-                const { results } = await env.DB.prepare("SELECT * FROM category").all();
+                const { results } = await env.DB.prepare("SELECT * FROM category ORDER BY name ASC").all();
                 return new Response(JSON.stringify(results), {
                     headers: { "Content-Type": "application/json", ...corsHeaders }
                 });
@@ -150,8 +160,11 @@ export default {
             if (path === "/api/v1/products") {
                 const categorySlug = url.searchParams.get("category_slug");
                 const search = url.searchParams.get("search");
+                const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+                const limit = Math.min(100, parseInt(url.searchParams.get("limit") || "60"));
+                const offset = (page - 1) * limit;
 
-                let sql = "SELECT p.*, c.name as category_name, c.slug as category_slug, b.name as brand_name FROM product p " +
+                let sql = "SELECT p.id, p.name, p.name_en, p.description, p.description_en, p.slug, p.sku, p.base_unit_price, p.stock_quantity, p.image_url, p.specifications, p.packaging_type, p.popularity, p.category_id, p.brand_id, c.name as category_name, c.slug as category_slug, b.name as brand_name FROM product p " +
                     "LEFT JOIN category c ON p.category_id = c.id " +
                     "LEFT JOIN brand b ON p.brand_id = b.id WHERE 1=1";
                 const args = [];
@@ -161,10 +174,11 @@ export default {
                     args.push(categorySlug);
                 }
                 if (search) {
-                    sql += " AND (p.name LIKE ? OR p.sku LIKE ?)";
-                    args.push(`%${search}%`, `%${search}%`);
+                    sql += " AND (p.name LIKE ? OR p.sku LIKE ? OR p.name_en LIKE ?)";
+                    args.push(`%${search}%`, `%${search}%`, `%${search}%`);
                 }
-                sql += " ORDER BY p.popularity DESC LIMIT 100";
+                sql += " ORDER BY p.popularity DESC LIMIT ? OFFSET ?";
+                args.push(limit, offset);
 
                 const { results } = await env.DB.prepare(sql).bind(...args).all();
                 const formatted = results.map(r => ({
@@ -421,8 +435,10 @@ export default {
                     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
                 }
                 const token = authHeader.split(" ")[1];
-                const jwtSecret = env.JWT_SECRET || "fallback_cloud_secret_2026_xyz123";
-                authUser = await verifyJWT(token, jwtSecret);
+                if (!env.JWT_SECRET) {
+                    return new Response(JSON.stringify({ error: "Server misconfiguration" }), { status: 500, headers: corsHeaders });
+                }
+                authUser = await verifyJWT(token, env.JWT_SECRET);
 
                 if (!authUser) {
                     return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 403, headers: corsHeaders });
@@ -510,19 +526,38 @@ export default {
 
 
             if (path === "/api/v1/auth/login" && request.method === "POST") {
-                const body = await request.json();
-                const hashedPassword = await hashPassword(body.password);
-                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(body.username, hashedPassword).first();
+                // Support both JSON and application/x-www-form-urlencoded
+                let username, password;
+                const contentType = request.headers.get('Content-Type') || '';
+                if (contentType.includes('application/json')) {
+                    const body = await request.json();
+                    username = body.username || body.email;
+                    password = body.password;
+                } else {
+                    const text = await request.text();
+                    const params = new URLSearchParams(text);
+                    username = params.get('username') || params.get('email');
+                    password = params.get('password');
+                }
+
+                if (!username || !password) {
+                    return new Response(JSON.stringify({ error: "Missing credentials" }), { status: 400, headers: corsHeaders });
+                }
+
+                const hashedPassword = await hashPassword(password);
+                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(username, hashedPassword).first();
                 if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
 
                 // Sign a real JWT valid for 24 hours
-                const jwtSecret = env.JWT_SECRET || "fallback_cloud_secret_2026_xyz123";
+                if (!env.JWT_SECRET) {
+                    return new Response(JSON.stringify({ error: "Server misconfiguration" }), { status: 500, headers: corsHeaders });
+                }
                 const token = await signJWT({
                     sub: user.id,
                     email: user.email,
                     role: user.role || 'user',
                     exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
-                }, jwtSecret);
+                }, env.JWT_SECRET);
 
                 return new Response(JSON.stringify({ token, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
@@ -585,7 +620,7 @@ export default {
                             <li><strong>INPE:</strong> ${body.inpe_number}</li>
                             <li><strong>Ville:</strong> ${body.city}</li>
                         </ul>
-                        <p><a href="https://mediunit-frontend.pages.dev/admin/users">Accéder au panel admin pour valider</a></p>
+                        <p><a href="https://mediunit.ma/admin">Accéder au panel admin pour valider</a></p>
                     `
                 });
 
@@ -688,7 +723,7 @@ export default {
                     `).bind(orderId, item.product_id, item.quantity, item.price, item.variant || '').run();
 
                     // Deduct stock
-                    await env.DB.prepare("UPDATE product SET stock = stock - ? WHERE id = ?").bind(item.quantity, item.product_id).run();
+                    await env.DB.prepare("UPDATE product SET stock_quantity = stock_quantity - ? WHERE id = ?").bind(item.quantity, item.product_id).run();
 
                     itemsListHtml += `<li>${item.name} (x${item.quantity}) - MAD ${item.price.toFixed(2)}</li>`;
                 }
@@ -727,9 +762,54 @@ export default {
             }
 
             if (path === "/api/v1/dashboard/" && request.method === "GET") {
-                const { results: orders } = await env.DB.prepare("SELECT * FROM \"order\" LIMIT 10").all();
+                // Return user-specific recent orders if authed, else admin summary
+                const authHeader = request.headers.get("Authorization");
+                let recent_orders = [];
+                let analytics = { total_spent: '0.00', last_order_date: null };
+
+                if (authHeader && authHeader.startsWith("Bearer ") && env.JWT_SECRET) {
+                    const tkn = authHeader.split(" ")[1];
+                    const authedUser = await verifyJWT(tkn, env.JWT_SECRET);
+                    if (authedUser) {
+                        const { results } = await env.DB.prepare(
+                            "SELECT * FROM \"order\" WHERE user_id = ? ORDER BY created_at DESC LIMIT 10"
+                        ).bind(authedUser.sub).all();
+                        recent_orders = results;
+                        const agg = await env.DB.prepare(
+                            "SELECT SUM(total_amount) as total, MAX(created_at) as last FROM \"order\" WHERE user_id = ?"
+                        ).bind(authedUser.sub).first();
+                        analytics = { total_spent: (agg?.total || 0).toFixed(2), last_order_date: agg?.last || null };
+                    }
+                }
+
                 const stats = await env.DB.prepare("SELECT COUNT(*) as count, SUM(total_amount) as total FROM \"order\"").first();
-                return new Response(JSON.stringify({ orders, stats }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return new Response(JSON.stringify({ recent_orders, analytics, stats }), {
+                    headers: { "Content-Type": "application/json", ...corsHeaders }
+                });
+            }
+
+            // Logout (stateless JWT — just acknowledge)
+            if (path === "/api/v1/auth/logout" && request.method === "POST") {
+                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            // Compliance documents (stub — returns empty list until table is created)
+            if (path === "/api/v1/dashboard/compliance" && request.method === "GET") {
+                return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            // License upload (stub — returns success for now)
+            if (path === "/api/v1/users/verify-upload" && request.method === "POST") {
+                return new Response(JSON.stringify({ success: true, message: "License received, pending manual review" }), {
+                    headers: { "Content-Type": "application/json", ...corsHeaders }
+                });
+            }
+
+            // Compliance pack download (stub)
+            if (path.match(/\/api\/v1\/compliance\/pack\/([^/]+)/) && request.method === "GET") {
+                return new Response(JSON.stringify({ error: "Compliance pack not yet available for this order" }), {
+                    status: 404, headers: { "Content-Type": "application/json", ...corsHeaders }
+                });
             }
 
             if (path.match(/\/api\/v1\/orders\/([^/]+)\/invoice/) && request.method === "GET") {

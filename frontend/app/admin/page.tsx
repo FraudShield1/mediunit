@@ -55,7 +55,6 @@ export default function AdminDashboard() {
     async function loadAdminData() {
         setLoading(true);
         try {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('mediunit_token') : null;
             const [ordersData, usersData, productsData, categoriesData, brandsData, statsData] = await Promise.all([
                 fetchAdminOrders(),
                 fetchAdminUsers(),

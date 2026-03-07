@@ -17,6 +17,11 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const searchParams = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const redirectTo = searchParams.get('from') || '/dashboard';
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -24,7 +29,7 @@ export default function LoginPage() {
         try {
             const data = await login(email, password);
             setAuth(data.token, data.user);
-            router.push('/dashboard');
+            router.push(redirectTo);
         } catch (err: any) {
             setError(err.message || t('Échec de la connexion', 'Login failed'));
         } finally {

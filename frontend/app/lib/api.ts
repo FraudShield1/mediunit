@@ -26,18 +26,21 @@ export async function login(email: string, password: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params,
-        credentials: 'include'
     });
     if (!res.ok) throw new Error('Incorrect email or password');
-    return res.json();
+    const data = await res.json();
+    // Set a session cookie so middleware can protect routes
+    if (typeof document !== 'undefined' && data.token) {
+        document.cookie = `mediunit_token=${data.token}; path=/; max-age=${24 * 60 * 60}; SameSite=Lax`;
+    }
+    return data;
 }
 
-export async function logout() {
-    const res = await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-    });
-    return res.json();
+export function logout() {
+    // JWT is stateless — just clear the client-side cookie
+    if (typeof document !== 'undefined') {
+        document.cookie = 'mediunit_token=; path=/; max-age=0';
+    }
 }
 
 export async function register(userData: any) {

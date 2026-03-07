@@ -22,13 +22,21 @@ export default function CartPage() {
         return basePrice;
     };
 
-    const subtotal = items.reduce((acc, item) => {
+    const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+    const baseSubtotal = items.reduce((acc, item) => {
         const itemPrice = item.basePrice ? getDiscountedPrice(item.basePrice, item.quantity) : item.price;
         return acc + (itemPrice * item.quantity);
     }, 0);
 
+    // Apply bulk discount at cart level (matching checkout logic)
+    let discountedSubtotal = baseSubtotal;
+    if (itemCount >= 50) discountedSubtotal = baseSubtotal * 0.8;
+    else if (itemCount >= 10) discountedSubtotal = baseSubtotal * 0.9;
+    const subtotal = discountedSubtotal;
+
     const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (items.length > 0 ? DELIVERY_FEE_MAD : 0);
-    const tax = subtotal * 0.20; // 20% VAT
+    const tax = subtotal * 0.20; // 20% VAT on discounted subtotal
     const total = subtotal + tax + deliveryFee;
     const needsMoreForMin = Math.max(0, MIN_ORDER_MAD - subtotal);
     const needsMoreForFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
