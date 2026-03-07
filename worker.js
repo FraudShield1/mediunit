@@ -177,7 +177,7 @@ export default {
                 });
             }
 
-            if (path.startsWith("/api/v1/products/")) {
+            if (path.startsWith("/api/v1/products/") && request.method === "GET") {
                 const parts = path.split("/");
                 const slug = parts[4]; // /api/v1/products/[slug]
 
@@ -496,12 +496,13 @@ export default {
                 const body = await request.json();
                 await env.DB.prepare(`
                     UPDATE product 
-                    SET name = ?, sku = ?, base_unit_price = ?, stock = ?, category_id = ?, brand_id = ?, description = ?, specifications = ?, packaging_type = ?, image_url = ?
+                    SET name = ?, sku = ?, base_unit_price = ?, stock_quantity = ?, category_id = ?, brand_id = ?, description = ?, specifications = ?, packaging_type = ?, image_url = ?, name_en = ?, description_en = ?
                     WHERE id = ?
                 `).bind(
-                    body.name, body.sku, body.base_unit_price, body.stock,
-                    body.category_id || 1, body.brand_id || 1, body.description || '',
+                    body.name || '', body.sku ?? null, body.base_unit_price ?? 0, body.stock_quantity ?? (body.stock ?? 100),
+                    body.category_id ?? 1, body.brand_id ?? 1, body.description || '',
                     body.specifications || '{}', body.packaging_type || 'Unité', body.image_url || '',
+                    body.name_en ?? null, body.description_en ?? null,
                     productId
                 ).run();
                 return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });

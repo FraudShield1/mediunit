@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         const title = `${product.name} | MediUnit Clinical Sourcing`;
         const description = product.description.replace(/<[^>]*>?/gm, '').slice(0, 160);
         return {
-            metadataBase: new URL('https://mediunit-frontend.pages.dev'),
+            metadataBase: new URL('https://mediunit.ma'),
             title,
             description,
             openGraph: {
@@ -92,7 +92,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         },
         offers: {
             '@type': 'Offer',
-            url: `https://mediunit-frontend.pages.dev/products/${product.slug}`,
+            url: `https://mediunit.ma/products/${product.slug}`,
             priceCurrency: 'MAD',
             price: product.base_unit_price,
             availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',

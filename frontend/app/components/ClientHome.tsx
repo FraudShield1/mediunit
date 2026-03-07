@@ -41,7 +41,8 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
         const timer = setTimeout(async () => {
             try {
                 // Fetch from the Edge API
-                const url = `https://mediunit-backend.a-naouri.workers.dev/api/v1/products?search=${encodeURIComponent(searchQuery)}`;
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
+                const url = `${apiBase}/products?search=${encodeURIComponent(searchQuery)}`;
                 const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();

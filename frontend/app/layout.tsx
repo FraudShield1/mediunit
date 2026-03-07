@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-    metadataBase: new URL('https://mediunit-frontend.pages.dev'),
+    metadataBase: new URL('https://mediunit.ma'),
     title: "MediUnit | Grossiste Dispositifs Médicaux & Consommables Casablanca Morocco",
     description: "MediUnit: Premier hub B2B pour le sourcing de dispositifs médicaux au Maroc. Livraison 24h/48h sur Casablanca et tout le royaume. Consommables chirurgicaux, kits cliniques et matériel de soins.",
     manifest: "/manifest.json",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "MediUnit - Sourcing Excellence en Dispositifs Médicaux B2B",
         description: "Plateforme B2B dédiée aux plateaux techniques marocains. Optimisez vos stocks avec une livraison fiable et certifiée.",
-        url: "https://mediunit-frontend.pages.dev",
+        url: "https://mediunit.ma",
         siteName: "MediUnit Morocco",
         images: [
             {
@@ -81,8 +81,8 @@ const jsonLd = {
     "@context": "https://schema.org",
     "@type": "MedicalOrganization",
     "name": "MediUnit",
-    "url": "https://mediunit-frontend.pages.dev",
-    "logo": "https://mediunit-frontend.pages.dev/logo.png",
+    "url": "https://mediunit.ma",
+    "logo": "https://mediunit.ma/logo.png",
     "description": "Fournitures cliniques et kits spécialisés à l'unité. Livraison express au Maroc (Casablanca, Rabat).",
     "address": {
         "@type": "PostalAddress",

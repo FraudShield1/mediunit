@@ -275,10 +275,6 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                         <div className="mb-12 bg-white rounded-[2rem] p-8 border border-slate-gray-light/10 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-medical-blue/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
 
-                            <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark tracking-tight leading-tight mb-4">
-                                {translateProduct(product.name)}
-                            </h1>
-
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-gray-light mb-6">{t('Tarification Professionnelle', 'Professional Pricing')}</h3>
                             <div className="flex items-baseline gap-2 mb-6">
                                 <span className="text-5xl font-black text-medical-blue">MAD {(product.base_unit_price * (1 - getDiscountInfo(quantity).discount)).toFixed(2)}</span>

@@ -36,8 +36,8 @@ export default function Footer() {
                         </h4>
                         <p className="text-xs text-slate-gray">
                             Email: <a href="mailto:abdel@mediunit.ma" className="text-medical-blue hover:underline">abdel@mediunit.ma</a><br />
-                            Avenida da Liberdade 110, Lisboa<br />
-                            Corporate Correspondence & Legal Affairs.
+                            Zone Industrielle Sapino, Nouaceur<br />
+                            Casablanca, Maroc.
                         </p>
                     </div>
                 </div>

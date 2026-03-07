@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
             allow: '/',
             disallow: ['/admin', '/api'],
         },
-        sitemap: 'https://mediunit-frontend.pages.dev/sitemap.xml',
+        sitemap: 'https://mediunit.ma/sitemap.xml',
     };
 }
