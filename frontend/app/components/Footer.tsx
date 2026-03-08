@@ -11,7 +11,7 @@ export default function Footer() {
             <div className="max-w-7xl mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                     <div className="space-y-4">
-                        <Logo width={100} height={35} />
+                        <Logo width={40} height={40} />
                         <p className="text-sm text-slate-gray leading-relaxed max-w-xs">
                             {t('Premier hub B2B dédié aux consommables critiques et kits spécialisés pour les praticiens au Maroc.', 'Premier B2B hub dedicated to critical consumables and specialized kits for practitioners in Morocco.')}
                         </p>

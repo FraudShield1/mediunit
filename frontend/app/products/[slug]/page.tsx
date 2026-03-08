@@ -31,6 +31,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
                 description,
                 images: [product.image_url],
             },
+            alternates: {
+                canonical: `/products/${params.slug}`,
+            },
         };
     } catch (e) {
         return { title: 'Produit | MediUnit' };

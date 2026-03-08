@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { fetchProducts, fetchCategories } from './lib/api';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = 'https://mediunit.ma';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mediunit.ma';
 
     let products = [];
     let categories = [];

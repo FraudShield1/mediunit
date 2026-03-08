@@ -12,7 +12,7 @@ export default function SearchPage() {
     const [query, setQuery] = useState('');
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const { t } = useLanguageStore();
+    const { t, translateProduct, language } = useLanguageStore();
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
@@ -90,7 +90,7 @@ export default function SearchPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-slate-gray-dark truncate group-hover:text-medical-blue transition-colors">
-                                        {product.name}
+                                        {translateProduct(product.name, product.name_en)}
                                     </h3>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] text-slate-gray font-black uppercase tracking-tight">{product.sku}</span>

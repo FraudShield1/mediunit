@@ -38,7 +38,11 @@ export default function AdminDashboard() {
     // Product Modal State
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
-    const [productForm, setProductForm] = useState<any>({ name: '', sku: '', base_unit_price: 0, stock: 100, description: '', image_url: '', category_id: 1, brand_id: 1, specifications: '{}', packaging_type: 'Unité' });
+    const [productForm, setProductForm] = useState<any>({
+        name: '', name_en: '', sku: '', base_unit_price: 0, stock: 100,
+        description: '', description_en: '', image_url: '',
+        category_id: 1, brand_id: 1, specifications: '{}', packaging_type: 'Unité'
+    });
 
     // Brand Modal State
     const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
@@ -53,6 +57,12 @@ export default function AdminDashboard() {
     }, []);
 
     async function loadAdminData() {
+        const token = localStorage.getItem('auth-storage');
+        if (!token) {
+            window.location.href = '/login?from=/admin';
+            return;
+        }
+
         setLoading(true);
         try {
             const [ordersData, usersData, productsData, categoriesData, brandsData, statsData] = await Promise.all([
@@ -71,6 +81,9 @@ export default function AdminDashboard() {
             setDashboardStats(statsData.stats || { count: 0, total: 0 });
         } catch (error) {
             console.error("Failed to load admin data:", error);
+            if (error instanceof Error && error.message.includes('401')) {
+                window.location.href = '/login?from=/admin';
+            }
         } finally {
             setLoading(false);
         }
@@ -104,10 +117,12 @@ export default function AdminDashboard() {
             setEditingProduct(product);
             setProductForm({
                 name: product.name,
+                name_en: product.name_en || '',
                 sku: product.sku,
                 base_unit_price: product.base_unit_price,
-                stock: product.stock || 0,
+                stock: product.stock_quantity || product.stock || 0,
                 description: product.description || '',
+                description_en: product.description_en || '',
                 image_url: product.image_url || '',
                 category_id: product.category_id || (categories[0]?.id || 1),
                 brand_id: product.brand_id || (brands[0]?.id || 1),
@@ -117,7 +132,8 @@ export default function AdminDashboard() {
         } else {
             setEditingProduct(null);
             setProductForm({
-                name: '', sku: '', base_unit_price: 0, stock: 100, description: '', image_url: '',
+                name: '', name_en: '', sku: '', base_unit_price: 0, stock: 100,
+                description: '', description_en: '', image_url: '',
                 category_id: categories[0]?.id || 1,
                 brand_id: brands[0]?.id || 1,
                 specifications: '{}', packaging_type: 'Unité'
@@ -591,9 +607,13 @@ export default function AdminDashboard() {
                         </div>
                         <form onSubmit={handleSaveProduct} className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
                             <div className="grid grid-cols-6 gap-6">
-                                <div className="col-span-4">
-                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nom Commercial</label>
+                                <div className="col-span-3">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nom Commercial (FR)</label>
                                     <input required type="text" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-medical-blue/10 focus:border-medical-blue transition-all" placeholder="Ex: Kit de Péridurale" />
+                                </div>
+                                <div className="col-span-3">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nom Commercial (EN)</label>
+                                    <input type="text" value={productForm.name_en} onChange={e => setProductForm({ ...productForm, name_en: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-medical-blue/10 focus:border-medical-blue transition-all" placeholder="Ex: Epidural Kit" />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">SKU Unique</label>
@@ -637,8 +657,12 @@ export default function AdminDashboard() {
                                 </div>
 
                                 <div className="col-span-6">
-                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description Marketing & Légale</label>
-                                    <textarea rows={4} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm"></textarea>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description (FR)</label>
+                                    <textarea rows={3} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm"></textarea>
+                                </div>
+                                <div className="col-span-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Description (EN)</label>
+                                    <textarea rows={3} value={productForm.description_en} onChange={e => setProductForm({ ...productForm, description_en: e.target.value })} className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm"></textarea>
                                 </div>
                             </div>
 

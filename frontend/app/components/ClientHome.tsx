@@ -179,7 +179,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-gray-dark group-hover:text-medical-blue transition-colors">{translateProduct(product.name)}</p>
+                                                    <p className="font-bold text-slate-gray-dark group-hover:text-medical-blue transition-colors">{translateProduct(product.name, product.name_en)}</p>
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-[10px] text-slate-gray uppercase font-medium">{product.sku}</p>
                                                         {product.packaging_type && <span className="text-[8px] bg-medical-blue/5 text-medical-blue px-1.5 rounded font-black">{product.packaging_type}</span>}
@@ -208,21 +208,20 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                     <h2 className="text-xl font-black text-slate-gray-dark uppercase tracking-widest mb-8 text-center">
                         {t('Piliers Cliniques', 'Clinical Pillars')}
                     </h2>
-                    <div className="flex flex-wrap justify-center gap-4 max-w-5xl mx-auto">
-                        {initialCategories.filter(cat => cat.slug !== 'unknown').map((cat) => {
-                            const imageUrl = categoryImages[cat.slug] || '/images/Pencil Points different colours.jpeg';
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
+                        {initialCategories.filter(cat => cat.slug !== 'unknown').slice(0, 10).map((cat) => {
                             return (
                                 <Link
                                     key={cat.id}
                                     href={`/categories/${cat.slug}`}
                                     aria-label={t(`Voir la catégorie ${cat.name}`, `View category ${cat.name}`)}
-                                    className="group flex flex-col items-center gap-3 p-4 bg-white rounded-[2rem] border border-slate-gray-light/10 hover:border-medical-blue hover:shadow-xl hover:shadow-medical-blue/5 transition-all w-48 text-center"
+                                    className="group flex flex-col items-center gap-6 p-8 bg-white rounded-[2.5rem] border border-slate-gray-light/5 hover:border-medical-blue hover:shadow-2xl hover:shadow-medical-blue/10 transition-all duration-500 text-center"
                                 >
-                                    <div className="w-full aspect-video rounded-3xl bg-slate-gray-light/5 flex items-center justify-center overflow-hidden relative group-hover:scale-105 transition-transform duration-500">
-                                        <Image src={imageUrl} alt={cat.name} fill sizes="200px" className="object-cover group-hover:opacity-90 transition-opacity" />
+                                    <div className="w-16 h-16 rounded-2xl bg-medical-blue/5 flex items-center justify-center group-hover:bg-medical-blue group-hover:rotate-6 transition-all duration-500">
+                                        <Package className="w-8 h-8 text-medical-blue group-hover:text-white transition-colors" />
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-tight text-slate-gray-dark group-hover:text-medical-blue leading-tight mb-2">
-                                        {translateProduct(cat.name)}
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-gray-dark group-hover:text-medical-blue leading-tight">
+                                        {translateProduct(cat.name, cat.name_en)}
                                     </span>
                                 </Link>
                             );
@@ -270,7 +269,8 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                         )}
                                     </div>
                                     <h3 className="font-black text-slate-gray-dark leading-tight line-clamp-2 md:text-lg mb-4">
-                                        {translateProduct(product.name)}
+                                        {translateProduct(product.name, product.name_en)}
+                                        {product.name_en && <span className="text-[8px] text-medical-blue block">EN: {product.name_en}</span>}
                                     </h3>
                                     <p className="text-[10px] text-slate-gray mb-4 font-medium uppercase tracking-widest">SKU: {product.sku}</p>
                                 </Link>

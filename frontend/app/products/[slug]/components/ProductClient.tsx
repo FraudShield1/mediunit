@@ -114,7 +114,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
     };
 
     const addToCart = () => {
-        const translatedName = translateProduct(product.name);
+        const translatedName = translateProduct(product.name, product.name_en);
         const displayName = selectedVariant ? `${translatedName} (${selectedVariant})` : translatedName;
         addItem({
             id: product.id + (selectedVariant || ''),
@@ -194,7 +194,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                         </>
                     )}
                     <ChevronRight className="w-3 h-3 text-slate-gray-light" />
-                    <span className="text-medical-blue truncate max-w-[200px]">{product.name}</span>
+                    <span className="text-medical-blue truncate max-w-[200px]">{translateProduct(product.name, product.name_en)}</span>
                 </nav>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
@@ -242,11 +242,11 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                     <div className="flex flex-col">
                         <div className="mb-2">
                             <span className="px-3 py-1 bg-medical-blue/10 text-medical-blue text-[10px] font-black rounded-full uppercase tracking-wider">
-                                {product.category_name || product.category?.name || t('Fourniture Médicale', 'Medical Supply')}
+                                {translateProduct(product.category_name || product.category?.name || '', product.category_name_en) || t('Fourniture Médicale', 'Medical Supply')}
                             </span>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black text-slate-gray-dark mb-4 leading-tight">
-                            {product.name}
+                            {translateProduct(product.name, product.name_en)}
                         </h1>
                         <div className="flex items-center gap-6 mb-8">
                             <p className="text-slate-gray-dark/40 font-mono text-sm uppercase tracking-widest">
@@ -266,7 +266,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                         </div>
                                     )}
                                     <span className="text-xs font-black text-slate-gray-dark uppercase tracking-tight">
-                                        {translateProduct(product.brand_entity?.name || product.brand)}
+                                        {translateProduct(product.brand_entity?.name || product.brand, product.brand_entity?.name_en)}
                                     </span>
                                 </div>
                             )}
@@ -282,32 +282,34 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                             </div>
 
                             {/* Variant Selection (If Multi-Size) */}
-                            <div className="mb-8 p-6 bg-clinic-white rounded-3xl border border-medical-blue/10 shadow-sm relative">
-                                <div className="flex items-center justify-between mb-4">
-                                    <p className="text-xs font-black uppercase tracking-widest text-slate-gray">{t('Sélectionner la Variante', 'Select Variant')}</p>
-                                    <span className="text-[10px] font-bold text-medical-blue bg-medical-blue/10 px-2 py-1 rounded-md">{variants.length} {t('Options', 'Options')}</span>
+                            {variants.length > 0 && (
+                                <div className="mb-8 p-6 bg-clinic-white rounded-3xl border border-medical-blue/10 shadow-sm relative">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className="text-xs font-black uppercase tracking-widest text-slate-gray">{t('Sélectionner la Variante', 'Select Variant')}</p>
+                                        <span className="text-[10px] font-bold text-medical-blue bg-medical-blue/10 px-2 py-1 rounded-md">{variants.length} {t('Options', 'Options')}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3">
+                                        {variants.map((v) => {
+                                            const isSelected = selectedVariant === v;
+                                            return (
+                                                <button
+                                                    key={v}
+                                                    onClick={() => setSelectedVariant(v)}
+                                                    className={`relative px-5 py-3 rounded-2xl text-sm font-black transition-all duration-300 flex items-center gap-2 overflow-hidden
+                                                            ${isSelected
+                                                            ? 'bg-medical-blue text-white shadow-xl shadow-medical-blue/20 ring-2 ring-medical-blue ring-offset-2'
+                                                            : 'bg-white text-slate-gray border border-slate-gray-light/20 hover:border-medical-blue/50 hover:bg-medical-blue/5 hover:text-medical-blue'
+                                                        }`}
+                                                >
+                                                    {isSelected && <div className="absolute inset-0 bg-white/20 blur-md"></div>}
+                                                    {isSelected && <CheckCircle2 className="w-4 h-4 relative z-10" />}
+                                                    <span className="relative z-10">{v}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-3">
-                                    {variants.map((v) => {
-                                        const isSelected = selectedVariant === v;
-                                        return (
-                                            <button
-                                                key={v}
-                                                onClick={() => setSelectedVariant(v)}
-                                                className={`relative px-5 py-3 rounded-2xl text-sm font-black transition-all duration-300 flex items-center gap-2 overflow-hidden
-                                                        ${isSelected
-                                                        ? 'bg-medical-blue text-white shadow-xl shadow-medical-blue/20 ring-2 ring-medical-blue ring-offset-2'
-                                                        : 'bg-white text-slate-gray border border-slate-gray-light/20 hover:border-medical-blue/50 hover:bg-medical-blue/5 hover:text-medical-blue'
-                                                    }`}
-                                            >
-                                                {isSelected && <div className="absolute inset-0 bg-white/20 blur-md"></div>}
-                                                {isSelected && <CheckCircle2 className="w-4 h-4 relative z-10" />}
-                                                <span className="relative z-10">{v}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            )}
 
                             {/* Tiered Pricing Upsell */}
                             <div className={`p-4 rounded-2xl border transition-all duration-300 flex items-center gap-3 ${getDiscountInfo(quantity).discount > 0 ? 'bg-sage-green/10 border-sage-green/20 text-sage-green-dark' : 'bg-medical-blue/5 border-medical-blue/10 text-medical-blue'}`}>
@@ -396,7 +398,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                         <h3 className="text-2xl font-black text-slate-gray-dark mb-8 tracking-tight">{t('Description Clinique', 'Clinical Description')}</h3>
                         <div className="text-slate-gray leading-relaxed text-lg font-medium mb-12 clinical-description prose prose-slate max-w-none">
                             <div dangerouslySetInnerHTML={{
-                                __html: (product.description || '').replace(/<table[\s\S]*?<\/table>/gi, '')
+                                __html: (translateProduct(product.description || '', product.description_en)).replace(/<table[\s\S]*?<\/table>/gi, '')
                             }} />
                         </div>
 
@@ -421,8 +423,8 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                         ...Object.entries(dynamicSpecs)
                                             .filter(([k]) => !['marque', 'brand', 'fabricant', 'manufacturer', 'sku', 'packaging', 'conditionnement'].includes(k.toLowerCase()))
                                             .map(([key, value]) => ({
-                                                label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
-                                                value: Array.isArray(value) ? value.join(', ') : String(value)
+                                                label: translateProduct(key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')),
+                                                value: translateProduct(Array.isArray(value) ? value.join(', ') : String(value))
                                             }))
                                     ];
 
@@ -505,7 +507,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                         {(p.brand_entity?.name || p.brand) && (
                                             <div className="text-[10px] font-black uppercase text-medical-blue mb-2 tracking-widest">{p.brand_entity?.name || p.brand}</div>
                                         )}
-                                        <h4 className="font-bold text-slate-gray-dark line-clamp-2 leading-tight mb-4 flex-1">{translateProduct(p.name)}</h4>
+                                        <h4 className="font-bold text-slate-gray-dark line-clamp-2 leading-tight mb-4 flex-1">{translateProduct(p.name, p.name_en)}</h4>
                                         <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-gray-light/5">
                                             <div className="text-sm font-black text-slate-gray-dark">MAD {p.base_unit_price}</div>
                                             <div className="w-8 h-8 rounded-full bg-medical-blue/5 flex items-center justify-center group-hover:bg-medical-blue group-hover:text-white text-medical-blue transition-colors">

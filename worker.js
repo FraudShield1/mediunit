@@ -1,8 +1,10 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-async function hashPassword(password) {
+async function hashPassword(password, env) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(password + "MediUnit_S4L7_2026!");
+    // Use env.PASSWORD_SALT if available, otherwise a default for safety (though DB should be migrated if salt changes)
+    const salt = env?.PASSWORD_SALT || "MediUnit_S4L7_2026!";
+    const data = encoder.encode(password + salt);
     const hash = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -93,7 +95,7 @@ export default {
             'https://mediunit-frontend.pages.dev'
         ];
         const requestOrigin = request.headers.get('Origin') || '';
-        const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : 'https://mediunit.ma';
+        const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
 
         const corsHeaders = {
             "Access-Control-Allow-Origin": corsOrigin,
@@ -164,7 +166,7 @@ export default {
                 const limit = Math.min(100, parseInt(url.searchParams.get("limit") || "60"));
                 const offset = (page - 1) * limit;
 
-                let sql = "SELECT p.id, p.name, p.name_en, p.description, p.description_en, p.slug, p.sku, p.base_unit_price, p.stock_quantity, p.image_url, p.specifications, p.packaging_type, p.popularity, p.category_id, p.brand_id, c.name as category_name, c.slug as category_slug, b.name as brand_name FROM product p " +
+                let sql = "SELECT p.id, p.name, p.name_en, p.description, p.description_en, p.slug, p.sku, p.base_unit_price, p.stock_quantity, p.image_url, p.specifications, p.packaging_type, p.popularity, p.category_id, p.brand_id, c.name as category_name, c.name_en as category_name_en, c.slug as category_slug, b.name as brand_name FROM product p " +
                     "LEFT JOIN category c ON p.category_id = c.id " +
                     "LEFT JOIN brand b ON p.brand_id = b.id WHERE 1=1";
                 const args = [];
@@ -201,7 +203,7 @@ export default {
                     const t = (fr, en) => lang === 'en' ? en : fr;
 
                     const product = await env.DB.prepare(`
-                        SELECT p.*, c.name as category_name, b.name as brand_name, b.manufacturer 
+                        SELECT p.*, c.name as category_name, c.name_en as category_name_en, b.name as brand_name, b.manufacturer 
                         FROM product p 
                         LEFT JOIN category c ON p.category_id = c.id 
                         LEFT JOIN brand b ON p.brand_id = b.id 
@@ -497,10 +499,10 @@ export default {
                 const id = body.id || Math.floor(Math.random() * 1000000);
                 const slug = body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                 await env.DB.prepare(`
-                    INSERT INTO product (id, name, slug, sku, description, base_unit_price, popularity, stock, category_id, brand_id, specifications, packaging_type, image_url)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO product (id, name, name_en, slug, sku, description, description_en, base_unit_price, popularity, stock_quantity, category_id, brand_id, specifications, packaging_type, image_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(
-                    id, body.name, slug, body.sku || '', body.description || '', body.base_unit_price || 0,
+                    id, body.name, body.name_en || '', slug, body.sku || '', body.description || '', body.description_en || '', body.base_unit_price || 0,
                     body.popularity || 0, body.stock || 100, body.category_id || 1, body.brand_id || 1,
                     body.specifications || '{}', body.packaging_type || 'Unité', body.image_url || ''
                 ).run();
@@ -544,7 +546,7 @@ export default {
                     return new Response(JSON.stringify({ error: "Missing credentials" }), { status: 400, headers: corsHeaders });
                 }
 
-                const hashedPassword = await hashPassword(password);
+                const hashedPassword = await hashPassword(password, env);
                 const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(username, hashedPassword).first();
                 if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
 
@@ -579,7 +581,7 @@ export default {
                 const id = crypto.randomUUID();
 
                 // Store user with 'pending' status
-                const hashedPassword = await hashPassword(body.password);
+                const hashedPassword = await hashPassword(body.password, env);
                 await env.DB.prepare(`
                     INSERT INTO user (id, email, hashed_password, full_name, clinic_name, specialty, inpe_number, city, verification_status, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))

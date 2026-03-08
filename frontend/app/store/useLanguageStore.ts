@@ -5,7 +5,7 @@ interface LanguageState {
     language: 'fr' | 'en';
     setLanguage: (lang: 'fr' | 'en') => void;
     t: (fr: string, en: string) => string;
-    translateProduct: (text: string) => string;
+    translateProduct: (text: string, enOverride?: string) => string;
 }
 
 // Medical translation dictionary for dynamic database content
@@ -56,7 +56,11 @@ export const useLanguageStore = create<LanguageState>()(
             language: 'fr',
             setLanguage: (lang) => set({ language: lang }),
             t: (fr, en) => (get().language === 'fr' ? fr : en),
-            translateProduct: (text) => (get().language === 'fr' ? text : translateText(text)),
+            translateProduct: (text: string, enOverride?: string) => {
+                if (get().language === 'fr') return text;
+                if (enOverride) return enOverride;
+                return translateText(text);
+            },
         }),
         {
             name: 'mediunit-language-storage',

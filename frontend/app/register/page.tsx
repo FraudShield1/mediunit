@@ -199,10 +199,10 @@ export default function RegisterPage() {
                                 >
                                     <option value="Casablanca">Casablanca</option>
                                     <option value="Rabat">Rabat</option>
-                                    <option value="Tanger">Tangier / Tanger</option>
-                                    <option value="Marrakech">Marrakesh / Marrakech</option>
+                                    <option value="Tanger">Tanger</option>
+                                    <option value="Marrakech">Marrakech</option>
                                     <option value="Agadir">Agadir</option>
-                                    <option value="Fès">Fez / Fès</option>
+                                    <option value="Fes">Fes</option>
                                     <option value="Autre">{t("Autre", "Other")}</option>
                                 </select>
                             </div>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Package, Plus, ChevronRight, Activity, ShoppingCart } from 'lucide-react';
+import Logo from '@/app/components/Logo';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCartStore } from '@/app/store/useCartStore';
@@ -15,7 +16,7 @@ interface CategoryClientProps {
 }
 
 export default function CategoryClient({ initialProducts, initialCategory }: CategoryClientProps) {
-    const { language, setLanguage, t } = useLanguageStore();
+    const { language, setLanguage, t, translateProduct } = useLanguageStore();
     const { items, addItem } = useCartStore();
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -38,12 +39,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
         <div className="min-h-screen pb-24 font-sans selection:bg-medical-blue/10 bg-clinic-white">
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-gray-light/20">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-medical-blue rounded-lg flex items-center justify-center">
-                            <Activity className="text-white w-5 h-5" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-medical-blue-dark">MediUnit</span>
-                    </Link>
+                    <Logo />
                     <div className="flex items-center gap-4">
                         {/* Language Switcher */}
                         <div className="flex items-center bg-slate-gray-light/5 rounded-full p-1 border border-slate-gray-light/10">
@@ -103,7 +99,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                                     )}
                                 </div>
                                 <h4 className="font-bold text-slate-gray-dark mb-1 line-clamp-2 h-10 overflow-hidden text-sm uppercase px-2">
-                                    {product.name}
+                                    {translateProduct(product.name, product.name_en)}
                                 </h4>
                                 <p className="text-[10px] text-slate-gray mb-4 font-medium uppercase tracking-widest">SKU: {product.sku}</p>
                             </Link>

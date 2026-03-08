@@ -8,21 +8,25 @@ import { useRouter } from 'next/navigation';
 import { createOrder } from '@/app/lib/api';
 import { toast } from 'react-hot-toast';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import { useCartStore } from '@/app/store/useCartStore';
+
+const FREE_DELIVERY_THRESHOLD = 1500;
+const DELIVERY_FEE_MAD = 50;
 
 export default function CheckoutPage() {
     const router = useRouter();
     const { t } = useLanguageStore();
+    const { items: storeItems, clearCart } = useCartStore();
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const savedCart = localStorage.getItem('mediunit_cart');
-        if (savedCart) {
-            setCartItems(JSON.parse(savedCart));
-        } else {
+        if (storeItems.length === 0) {
             router.push('/cart');
+        } else {
+            setCartItems(storeItems);
         }
-    }, [router]);
+    }, []);
 
     const getDiscountedPrice = (basePrice: number, qty: number) => {
         if (qty >= 50) return basePrice * 0.8;
@@ -32,17 +36,14 @@ export default function CheckoutPage() {
 
     const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-    const baseSubtotal = cartItems.reduce((acc, item) => {
-        const itemPrice = item.basePrice || item.price;
+    const subtotal = cartItems.reduce((acc, item) => {
+        const itemPrice = item.basePrice ? getDiscountedPrice(item.basePrice, item.quantity) : item.price;
         return acc + (itemPrice * item.quantity);
     }, 0);
 
-    let discountedSubtotal = baseSubtotal;
-    if (itemCount >= 50) discountedSubtotal = baseSubtotal * 0.8;
-    else if (itemCount >= 10) discountedSubtotal = baseSubtotal * 0.9;
-
-    const tax = discountedSubtotal * 0.20; // 20% VAT
-    const total = discountedSubtotal + tax;
+    const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (cartItems.length > 0 ? DELIVERY_FEE_MAD : 0);
+    const tax = subtotal * 0.20; // 20% VAT
+    const total = subtotal + tax + deliveryFee;
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -66,7 +67,7 @@ export default function CheckoutPage() {
         try {
             const orderData = {
                 items: cartItems.map(item => ({
-                    product_id: item.productId || item.id,
+                    product_id: String(item.productId),
                     quantity: item.quantity
                 })),
                 shipping_details: {
@@ -82,8 +83,7 @@ export default function CheckoutPage() {
             };
 
             const order = await createOrder(orderData);
-            localStorage.removeItem('mediunit_cart');
-            window.dispatchEvent(new Event('cart_updated'));
+            clearCart();
             router.push(`/checkout/success?order_id=${order.id}`);
         } catch (error) {
             toast.error(t("Erreur lors de la validation de la commande. Veuillez vérifier vos informations.", "Error validating order. Please check your information."));
@@ -251,11 +251,14 @@ export default function CheckoutPage() {
                             <div className="space-y-4 pt-8 border-t border-slate-gray-light/10">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('Sous-total', 'Subtotal')}</span>
-                                    <span className="font-bold text-slate-gray-dark">MAD {discountedSubtotal.toFixed(2)}</span>
+                                    <span className="font-bold text-slate-gray-dark">MAD {subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('Frais de Livraison', 'Delivery Fee')}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('Expédition Express', 'Express Shipping')}</span>
-                                    <span className="font-black text-sage-green">{t('OFFERT', 'FREE')}</span>
+                                    <span className="font-black text-sage-green">{deliveryFee > 0 ? `MAD ${deliveryFee.toFixed(2)}` : t('OFFERT', 'FREE')}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('TVA (20%)', 'VAT (20%)')}</span>
