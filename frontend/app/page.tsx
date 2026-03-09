@@ -3,8 +3,8 @@ import { fetchProducts, fetchCategories } from '@/app/lib/api';
 import ClientHome from '@/app/components/ClientHome';
 
 export const metadata = {
-    title: 'MediUnit | Fournisseur Médical B2B Casablanca - Gants, Seringues, Kits Cliniques',
-    description: 'Plateforme de commande de dispositifs médicaux pour cliniques et médecins au Maroc. Livraison le lendemain à Casablanca, gants nitrile, masques, seringues.',
+    title: 'MediUnit | Medical Supplies & Clinical Kits Casablanca',
+    description: 'B2B medical supply platform for clinics and practitioners in Morocco. Next-day delivery in Casablanca, nitrile gloves, masks, syringes, and clinical kits.',
 };
 
 export default async function LandingPage() {

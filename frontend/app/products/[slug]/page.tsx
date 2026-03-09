@@ -5,8 +5,11 @@ import { Metadata } from 'next';
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
     try {
         const product = await fetchProductBySlug(params.slug);
-        const title = `${product.name} | MediUnit Clinical Sourcing`;
-        const description = product.description.replace(/<[^>]*>?/gm, '').slice(0, 160);
+        const name = product.name_en || product.name;
+        const title = `${name} | MediUnit Clinical Sourcing`;
+        const description_raw = product.description_en || product.description || '';
+        const description = description_raw.replace(/<[^>]*>?/gm, '').slice(0, 160);
+
         return {
             metadataBase: new URL('https://mediunit.ma'),
             title,
@@ -16,12 +19,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
                 description,
                 type: 'article',
                 url: `https://mediunit.ma/products/${params.slug}`,
+                siteName: 'MediUnit',
+                locale: 'fr_MA',
+                alternateLocale: ['en_US'],
                 images: [
                     {
                         url: product.image_url,
-                        width: 800,
-                        height: 800,
-                        alt: product.name,
+                        width: 1200,
+                        height: 630,
+                        alt: name,
                     },
                 ],
             },
@@ -59,7 +65,7 @@ export async function generateStaticParams() {
         }));
     } catch (e) {
         console.error("Critical: Failed to fetch static params for products!", e);
-        return []; // Return empty array so build passes but doesn't fake pages
+        return [];
     }
 }
 
@@ -79,16 +85,18 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 .slice(0, 4);
         }
     } catch (e) {
-        return <div className="min-h-screen flex items-center justify-center">Produit introuvable</div>;
+        return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-slate-gray">Produit introuvable</div>;
     }
 
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
         name: product.name,
+        alternateName: product.name_en,
         image: product.image_url,
-        description: product.description,
+        description: product.description_en || product.description,
         sku: product.sku,
+        mpn: product.sku,
         brand: {
             '@type': 'Brand',
             name: product.brand_entity?.name || product.brand || 'MediUnit',
@@ -104,12 +112,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     };
 
     return (
-        <>
+        <div className="bg-white">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
             <ProductClient slug={params.slug} initialData={product} relatedProducts={relatedProducts} />
-        </>
+        </div>
     );
 }
