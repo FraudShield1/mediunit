@@ -11,25 +11,43 @@ interface LogoProps {
     showText?: boolean;
 }
 
-export default function Logo({ className = '', width = 48, height = 48, showText = true }: LogoProps) {
+export default function Logo({ className = '', width = 40, height = 40, showText = true }: LogoProps) {
     return (
-        <Link href="/" className={`flex items-center gap-2.5 group transition-all hover:opacity-90 ${className}`}>
-            <div className="relative flex-shrink-0">
+        <Link href="/" className={`flex items-center gap-3 group transition-all ${className}`}>
+            {/* Icon container — drop shadow tinted to brand blue, no extra border-radius
+                since the PNG already has its own perfectly-rounded corners */}
+            <div
+                className="relative flex-shrink-0"
+                style={{
+                    filter: 'drop-shadow(0 4px 12px rgba(0, 74, 153, 0.25))',
+                    transition: 'filter 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.filter =
+                        'drop-shadow(0 6px 18px rgba(0, 74, 153, 0.40))';
+                }}
+                onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.filter =
+                        'drop-shadow(0 4px 12px rgba(0, 74, 153, 0.25))';
+                }}
+            >
                 <Image
                     src="/logo.png"
                     alt="MediUnit Logo"
                     width={width}
                     height={height}
-                    className="object-contain rounded-xl shadow-sm"
+                    className="object-contain"
                     priority
+                    quality={95}
                 />
             </div>
+
             {showText && (
-                <div className="flex flex-col">
-                    <span className="text-xl font-black text-slate-gray-dark tracking-tight leading-none group-hover:text-medical-blue transition-colors">
-                        MediUnit
+                <div className="flex flex-col leading-none">
+                    <span className="text-[18px] font-black text-slate-gray-dark tracking-tight group-hover:text-medical-blue transition-colors duration-200">
+                        Medi<span className="text-medical-blue">Unit</span>
                     </span>
-                    <span className="text-[10px] font-black text-medical-blue uppercase tracking-widest leading-none mt-1 opacity-80">
+                    <span className="text-[9px] font-black text-medical-blue/70 uppercase tracking-[0.2em] mt-[3px]">
                         Morocco
                     </span>
                 </div>

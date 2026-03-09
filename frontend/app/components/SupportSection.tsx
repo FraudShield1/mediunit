@@ -13,7 +13,7 @@ interface SupportSectionProps {
 export default function SupportSection({ productContext }: SupportSectionProps) {
     const { userName, clinicName } = useAuthStore();
     const { items } = useCartStore();
-    const { t } = useLanguageStore();
+    const { t, translateProduct } = useLanguageStore();
 
     const generateWhatsAppLink = () => {
         const phone = '212661364375';
@@ -43,7 +43,8 @@ export default function SupportSection({ productContext }: SupportSectionProps) 
             items.forEach(item => {
                 const itemPrice = item.basePrice ? getDiscountedPrice(item.basePrice, item.quantity) : item.price;
                 subtotal += (itemPrice * item.quantity);
-                message += `▪ ${item.name} *(x${item.quantity})*\n`;
+                const displayName = translateProduct(item.name, item.name_en);
+                message += `▪ ${displayName} *(x${item.quantity})*\n`;
             });
 
             const tax = subtotal * 0.20;

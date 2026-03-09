@@ -26,7 +26,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
     const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
     const fuse = new Fuse(initialProducts, {
-        keys: ['name', 'sku', 'category.name', 'brand', 'brand_entity.name'],
+        keys: ['name', 'name_en', 'sku', 'category.name', 'brand', 'brand_entity.name'],
         threshold: 0.3,
         distance: 100
     });
@@ -69,6 +69,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
             id: product.id,
             productId: product.id,
             name: product.name,
+            name_en: product.name_en,
             sku: product.sku,
             price: product.base_unit_price || 0,
             basePrice: product.base_unit_price || 0,
@@ -270,7 +271,6 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                     </div>
                                     <h3 className="font-black text-slate-gray-dark leading-tight line-clamp-2 md:text-lg mb-4">
                                         {translateProduct(product.name, product.name_en)}
-                                        {product.name_en && <span className="text-[8px] text-medical-blue block">EN: {product.name_en}</span>}
                                     </h3>
                                     <p className="text-[10px] text-slate-gray mb-4 font-medium uppercase tracking-widest">SKU: {product.sku}</p>
                                 </Link>

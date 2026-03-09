@@ -73,6 +73,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from 'react-hot-toast';
 import BackToTop from './components/BackToTop';
+import LangSync from './components/LangSync';
 
 const jsonLd = {
     "@context": "https://schema.org",
@@ -102,6 +103,7 @@ export default function RootLayout({
                 />
             </head>
             <body className="font-sans antialiased">
+                <LangSync />
                 <Toaster position="top-center" reverseOrder={false} />
                 <div className="min-h-screen flex flex-col">
                     <div className="flex-1">{children}</div>

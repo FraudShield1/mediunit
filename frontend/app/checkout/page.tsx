@@ -254,9 +254,6 @@ export default function CheckoutPage() {
                                     <span className="font-bold text-slate-gray-dark">MAD {subtotal.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('Frais de Livraison', 'Delivery Fee')}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
                                     <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('Expédition Express', 'Express Shipping')}</span>
                                     <span className="font-black text-sage-green">{deliveryFee > 0 ? `MAD ${deliveryFee.toFixed(2)}` : t('OFFERT', 'FREE')}</span>
                                 </div>

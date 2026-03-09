@@ -35,6 +35,14 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
     const [isGateOpen, setIsGateOpen] = useState(false);
     const [gatedDocType, setGatedDocType] = useState('');
 
+    // Update the browser tab title when language changes
+    useEffect(() => {
+        if (!product) return;
+        const displayName = translateProduct(product.name, product.name_en);
+        document.title = `${displayName} | MediUnit Clinical Sourcing`;
+    }, [language, product]);
+
+
     // Parse dynamic specs to find variants (Taille, Size, etc.)
     let dynamicSpecs: any = {};
     try {
@@ -116,10 +124,13 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
     const addToCart = () => {
         const translatedName = translateProduct(product.name, product.name_en);
         const displayName = selectedVariant ? `${translatedName} (${selectedVariant})` : translatedName;
+        const rawName = selectedVariant ? `${product.name} (${selectedVariant})` : product.name;
+        const rawNameEn = selectedVariant ? `${product.name_en || ''} (${selectedVariant})` : product.name_en;
         addItem({
             id: product.id + (selectedVariant || ''),
             productId: product.id,
-            name: displayName,
+            name: rawName,
+            name_en: rawNameEn || undefined,
             sku: product.sku,
             price: product.base_unit_price * (1 - getDiscountInfo(quantity).discount) || 0,
             basePrice: product.base_unit_price,
@@ -184,7 +195,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                 <nav className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-gray mb-8">
                     <Link href="/" className="hover:text-medical-blue transition-colors">{t('Accueil', 'Home')}</Link>
                     <ChevronRight className="w-3 h-3 text-slate-gray-light" />
-                    <Link href="/catalogue" className="hover:text-medical-blue transition-colors">{t('Catalogue', 'Catalog')}</Link>
+                    <Link href="/" className="hover:text-medical-blue transition-colors">{t('Catalogue', 'Catalog')}</Link>
                     {product.category && (
                         <>
                             <ChevronRight className="w-3 h-3 text-slate-gray-light" />
@@ -326,7 +337,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                         className="w-14 h-14 flex items-center justify-center text-slate-gray hover:text-medical-blue transition-colors touch-manipulation"
-                                        aria-label="Diminuer la quantité"
+                                        aria-label={t('Diminuer la quantité', 'Decrease quantity')}
                                     >
                                         <Minus className="w-6 h-6" />
                                     </button>
@@ -334,7 +345,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                     <button
                                         onClick={() => setQuantity(quantity + 1)}
                                         className="w-14 h-14 flex items-center justify-center text-slate-gray hover:text-medical-blue transition-colors touch-manipulation"
-                                        aria-label="Augmenter la quantité"
+                                        aria-label={t('Augmenter la quantité', 'Increase quantity')}
                                     >
                                         <Plus className="w-6 h-6" />
                                     </button>

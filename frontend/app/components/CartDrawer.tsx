@@ -92,7 +92,7 @@ export default function CartDrawer() {
                                     </div>
                                     <div className="flex-1 flex flex-col justify-between">
                                         <div>
-                                            <h3 className="text-sm font-bold text-slate-gray-dark leading-tight line-clamp-2">{translateProduct(item.name)}</h3>
+                                            <h3 className="text-sm font-bold text-slate-gray-dark leading-tight line-clamp-2">{translateProduct(item.name, item.name_en)}</h3>
                                             <p className="text-[10px] text-slate-gray uppercase mt-1">{item.sku}</p>
                                         </div>
                                         <div className="flex items-end justify-between mt-2">

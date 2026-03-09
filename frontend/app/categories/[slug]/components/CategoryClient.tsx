@@ -22,17 +22,19 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
 
     const handleAddToCart = (e: React.MouseEvent, product: any) => {
         e.preventDefault();
+        const displayName = translateProduct(product.name, product.name_en);
         addItem({
             id: product.id,
             productId: product.id,
             name: product.name,
+            name_en: product.name_en,
             sku: product.sku,
             price: product.base_unit_price || 0,
             basePrice: product.base_unit_price || 0,
             quantity: 1,
             image: product.image_url || '/images/Pencil Points different colours.jpeg'
         });
-        toast.success(`${product.name} ${t('ajouté au panier !', 'added to cart!')}`);
+        toast.success(`${displayName} ${t('ajouté au panier !', 'added to cart!')}`);
     };
 
     return (
@@ -76,7 +78,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                         <span className="text-medical-blue">{t('Catégories', 'Categories')}</span>
                     </nav>
                     <h1 className="text-4xl md:text-5xl font-black text-slate-gray-dark tracking-tight">
-                        {initialCategory?.name || 'Fournitures'}
+                        {translateProduct(initialCategory?.name || 'Fournitures', initialCategory?.name_en)}
                     </h1>
                 </div>
 
@@ -90,7 +92,8 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                                             src={product.image_url}
                                             alt={product.name}
                                             fill
-                                            className="object-cover group-hover:scale-110 transition-all duration-500"
+                                            sizes="(max-width: 768px) 50vw, 25vw"
+                                            className="object-contain p-4 group-hover:scale-110 transition-all duration-500"
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center">

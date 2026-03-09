@@ -23,7 +23,7 @@ export default function BottomNav() {
                     const isActive = pathname === item.href;
                     return (
                         <Link
-                            key={item.label}
+                            key={item.href}
                             href={item.href}
                             aria-label={item.label}
                             onClick={(e) => {
