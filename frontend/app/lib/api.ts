@@ -54,7 +54,7 @@ export async function register(userData: any) {
 }
 
 export async function fetchCategories() {
-    const res = await fetch(`${API_URL}/categories`);
+    const res = await fetch(`${API_URL}/categories`, { next: { revalidate: 0 } });
     if (!res.ok) throw new Error('Failed to fetch categories');
     return res.json();
 }
@@ -69,13 +69,13 @@ export async function fetchProducts(categorySlug?: string, search?: string) {
         url += `?${params.toString()}`;
     }
 
-    const res = await fetch(url);
+    const res = await fetch(url, { next: { revalidate: 0 } });
     if (!res.ok) throw new Error('Failed to fetch products');
     return res.json();
 }
 
 export async function fetchProductBySlug(slug: string) {
-    const res = await fetch(`${API_URL}/products/${slug}`);
+    const res = await fetch(`${API_URL}/products/${slug}`, { next: { revalidate: 0 } });
     if (!res.ok) throw new Error('Failed to fetch product');
     return res.json();
 }
@@ -213,7 +213,7 @@ export async function deleteProduct(productId: string) {
 }
 
 export async function fetchBrands() {
-    const res = await fetch(`${API_URL}/brands`);
+    const res = await fetch(`${API_URL}/brands`, { next: { revalidate: 0 } });
     if (!res.ok) return [];
     return res.json();
 }
