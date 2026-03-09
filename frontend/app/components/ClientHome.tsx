@@ -43,7 +43,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                 // Fetch from the Edge API
                 const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
                 const url = `${apiBase}/products?search=${encodeURIComponent(searchQuery)}`;
-                const res = await fetch(url);
+                const res = await fetch(url, { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     setSearchResults(data);

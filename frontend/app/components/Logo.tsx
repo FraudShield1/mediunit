@@ -32,7 +32,7 @@ export default function Logo({ className = '', width = 40, height = 40, showText
                 }}
             >
                 <Image
-                    src="/logo.png"
+                    src="/logo.png?v=2"
                     alt="MediUnit Logo"
                     width={width}
                     height={height}
