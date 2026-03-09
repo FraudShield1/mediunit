@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe, AlertCircle } from 'lucide-react';
+import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe, AlertCircle, X } from 'lucide-react';
 import EmptyState from './EmptyState';
 import Logo from './Logo';
 import { useCartStore } from '@/app/store/useCartStore';
@@ -157,13 +157,23 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder={t('Rechercher seringues, masques, gants...', 'Search syringes, masks, gloves...')}
                                 aria-label={t('Rechercher des produits médicaux', 'Search medical products')}
-                                className="w-full h-16 md:h-24 pl-16 pr-6 rounded-[2rem] text-lg md:text-2xl border-none shadow-2xl shadow-medical-blue/10 focus:ring-4 focus:ring-medical-blue/5 transition-all outline-none bg-white"
+                                className="w-full h-16 md:h-24 pl-16 pr-16 rounded-[2rem] text-lg md:text-2xl border-none shadow-2xl shadow-medical-blue/10 focus:ring-4 focus:ring-medical-blue/5 transition-all outline-none bg-white"
                             />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 p-2 text-slate-gray-light hover:text-medical-blue transition-colors"
+                                    aria-label={t('Effacer la recherche', 'Clear search')}
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            )}
                         </form>
 
                         {/* Search Autocomplete Suggestions */}
                         {searchQuery.length > 1 && (
-                            <div className="absolute top-full left-0 right-0 mt-4 bg-white rounded-3xl shadow-2xl border border-slate-gray-light/10 overflow-hidden text-left py-2">
+                            <div className="absolute top-full left-0 right-0 mt-4 glass rounded-[2rem] overflow-hidden text-left py-2 animate-slide-up z-[60]">
                                 {filteredProducts.length > 0 ? (
                                     filteredProducts.slice(0, 5).map(product => (
                                         <Link
