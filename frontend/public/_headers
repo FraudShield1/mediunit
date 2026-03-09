@@ -1,0 +1,21 @@
+# Avoid caching HTML files to ensure users always see the latest version
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Fallback for paths without extensions (Next.js static export paths)
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Cache versioned Next.js assets indefinitely (already have hashes in filenames)
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache public images and other assets, but with a shorter life for flexibility
+/images/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+
+/favicon.ico
+  Cache-Control: public, max-age=86400
+
+/logo.png
+  Cache-Control: public, max-age=0, must-revalidate
