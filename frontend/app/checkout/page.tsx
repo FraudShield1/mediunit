@@ -5,13 +5,15 @@ import { ShieldCheck, Truck, CheckCircle2, ArrowRight, CreditCard, Clock } from 
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createOrder } from '@/app/lib/api';
+import { createOrder, fetchPublicSettings } from '@/app/lib/api';
 import { toast } from 'react-hot-toast';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import { useCartStore } from '@/app/store/useCartStore';
 
-const FREE_DELIVERY_THRESHOLD = 1500;
-const DELIVERY_FEE_MAD = 50;
+// Default fallbacks
+const DEFAULT_FREE_DELIVERY_THRESHOLD = 1500;
+const DEFAULT_DELIVERY_FEE_MAD = 50;
+const DEFAULT_VAT_RATE = 0.20;
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -19,6 +21,7 @@ export default function CheckoutPage() {
     const { items: storeItems, clearCart } = useCartStore();
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [settings, setSettings] = useState<any>(null);
 
     useEffect(() => {
         if (storeItems.length === 0) {
@@ -26,6 +29,9 @@ export default function CheckoutPage() {
         } else {
             setCartItems(storeItems);
         }
+
+        // Fetch global settings for shipping/taxes
+        fetchPublicSettings().then(setSettings).catch(console.error);
     }, []);
 
     const getDiscountedPrice = (basePrice: number, qty: number) => {
@@ -41,8 +47,12 @@ export default function CheckoutPage() {
         return acc + (itemPrice * item.quantity);
     }, 0);
 
-    const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : (cartItems.length > 0 ? DELIVERY_FEE_MAD : 0);
-    const tax = subtotal * 0.20; // 20% VAT
+    const freeThreshold = settings ? Number(settings.shipping_free_threshold) : DEFAULT_FREE_DELIVERY_THRESHOLD;
+    const standardFee = settings ? Number(settings.shipping_standard) : DEFAULT_DELIVERY_FEE_MAD;
+    const vatRate = settings ? Number(settings.vat_rate) / 100 : DEFAULT_VAT_RATE;
+
+    const deliveryFee = subtotal >= freeThreshold ? 0 : (cartItems.length > 0 ? standardFee : 0);
+    const tax = subtotal * vatRate;
     const total = subtotal + tax + deliveryFee;
 
     const [formData, setFormData] = useState({
@@ -258,7 +268,7 @@ export default function CheckoutPage() {
                                     <span className="font-black text-sage-green">{deliveryFee > 0 ? `MAD ${deliveryFee.toFixed(2)}` : t('OFFERT', 'FREE')}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t('TVA (20%)', 'VAT (20%)')}</span>
+                                    <span className="text-slate-gray font-bold uppercase tracking-widest text-[10px]">{t(`TVA (${(vatRate * 100).toFixed(0)}%)`, `VAT (${(vatRate * 100).toFixed(0)}%)`)}</span>
                                     <span className="font-bold text-slate-gray-dark">MAD {tax.toFixed(2)}</span>
                                 </div>
                                 <div className="pt-8 mt-4 border-t-2 border-slate-gray-light/10 flex justify-between items-center">

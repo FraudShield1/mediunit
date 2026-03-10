@@ -4,36 +4,64 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
     LayoutDashboard, ShoppingCart, Users, TrendingUp, Search, Filter,
-    CheckCircle2, Clock, Package, ChevronDown, Plus, Edit2, Trash2, X, FileText, ShieldCheck
+    CheckCircle2, Clock, Package, ChevronDown, Plus, Edit2, Trash2, X, FileText, Settings, Save, ShieldCheck
 } from 'lucide-react';
 import {
     fetchAdminOrders,
+    fetchAdminOrderById,
     fetchAdminUsers,
     fetchProducts,
     updateOrderStatus,
     verifyUser,
+    rejectUser,
     createProduct,
     updateProduct,
     deleteProduct,
     fetchCategories,
     fetchBrands,
+    createBrand,
+    deleteBrand,
     updateBrand,
-    fetchAdminStats
+    fetchAdminStats,
+    fetchAdminDashboardSummary,
+    fetchAdminSettings,
+    updateAdminSettings,
+    fetchOrderInvoicePdfBlob,
+    fetchUserVerificationLicenseBlob
 } from '@/app/lib/api';
+import { useLanguageStore } from '@/app/store/useLanguageStore';
+import { useAuthStore } from '@/app/store/useAuthStore';
 import { toast } from 'react-hot-toast';
 
 type TabType = 'dashboard' | 'orders' | 'products' | 'customers' | 'brands' | 'settings';
 
 export default function AdminDashboard() {
-    const [orders, setOrders] = useState<any[]>([]);
+    const { t } = useLanguageStore();
+    const { token } = useAuthStore();
+    const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [users, setUsers] = useState<any[]>([]);
+    const [statsResult, setStatsResult] = useState<any>(null);
+    const [adminSummary, setAdminSummary] = useState<any>(null);
+    const [settings, setSettings] = useState<any[]>([]);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
+    const [orders, setOrders] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [searchTerm, setSearchTerm] = useState('');
+    const [orderStatusFilter, setOrderStatusFilter] = useState<string>('');
     const [dashboardStats, setDashboardStats] = useState<any>({ count: 0, total: 0 });
+
+    // Orders pagination
+    const [ordersLimit, setOrdersLimit] = useState<number>(25);
+    const [ordersOffset, setOrdersOffset] = useState<number>(0);
+
+    // Customers filters
+    const [customerStatusFilter, setCustomerStatusFilter] = useState<string>('');
+
+    // Brands create
+    const [isCreatingBrand, setIsCreatingBrand] = useState(false);
 
     // Product Modal State
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -51,13 +79,19 @@ export default function AdminDashboard() {
 
     // Order View State
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+    const [selectedOrderDetails, setSelectedOrderDetails] = useState<any | null>(null);
+    const [isLoadingOrderDetails, setIsLoadingOrderDetails] = useState(false);
+
+    // User Rejection State
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [userToReject, setUserToReject] = useState<any | null>(null);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     useEffect(() => {
         loadAdminData();
-    }, []);
+    }, [token]);
 
     async function loadAdminData() {
-        const token = localStorage.getItem('auth-storage');
         if (!token) {
             window.location.href = '/login?from=/admin';
             return;
@@ -65,20 +99,25 @@ export default function AdminDashboard() {
 
         setLoading(true);
         try {
-            const [ordersData, usersData, productsData, categoriesData, brandsData, statsData] = await Promise.all([
-                fetchAdminOrders(),
+            const [usersData, productsData, categoriesData, ordersData, statsData, brandsData, settingsData, summaryData] = await Promise.all([
                 fetchAdminUsers(),
                 fetchProducts(),
                 fetchCategories(),
+                fetchAdminOrders({ limit: ordersLimit, offset: ordersOffset }),
+                fetchAdminStats(),
                 fetchBrands(),
-                fetchAdminStats()
+                fetchAdminSettings(),
+                fetchAdminDashboardSummary()
             ]);
-            setOrders(ordersData);
             setUsers(usersData);
             setProducts(productsData.data || productsData.items || productsData);
             setCategories(categoriesData);
+            setOrders(ordersData);
+            setStatsResult(statsData);
             setBrands(brandsData);
+            setSettings(settingsData);
             setDashboardStats(statsData.stats || { count: 0, total: 0 });
+            setAdminSummary(summaryData);
         } catch (error) {
             console.error("Failed to load admin data:", error);
             if (error instanceof Error && error.message.includes('401')) {
@@ -92,11 +131,56 @@ export default function AdminDashboard() {
     const handleUpdateStatus = async (orderId: string, status: string) => {
         try {
             await updateOrderStatus(orderId, status);
-            const ordersData = await fetchAdminOrders();
+            const ordersData = await fetchAdminOrders({ status: orderStatusFilter || undefined, q: searchTerm || undefined, limit: ordersLimit, offset: ordersOffset });
             setOrders(ordersData);
+            if (selectedOrder && String(selectedOrder.id) === String(orderId)) {
+                setSelectedOrder({ ...selectedOrder, status });
+            }
+            if (selectedOrderDetails && String(selectedOrderDetails.id) === String(orderId)) {
+                setSelectedOrderDetails({ ...selectedOrderDetails, status });
+            }
             toast.success("Statut de la commande mis à jour");
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut");
+        }
+    };
+
+    const handleDownloadInvoicePdf = async (orderId: string | number) => {
+        try {
+            const blob = await fetchOrderInvoicePdfBlob(String(orderId));
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+        } catch (e) {
+            console.error(e);
+            toast.error(t('Erreur de téléchargement facture', 'Invoice download failed'));
+        }
+    };
+
+    const handleDownloadLicense = async (licenseUrl: string) => {
+        try {
+            const blob = await fetchUserVerificationLicenseBlob(licenseUrl);
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+        } catch (e) {
+            console.error(e);
+            toast.error(t('Erreur de téléchargement licence', 'License download failed'));
+        }
+    };
+
+    const openOrderModal = async (order: any) => {
+        setSelectedOrder(order);
+        setSelectedOrderDetails(null);
+        setIsLoadingOrderDetails(true);
+        try {
+            const details = await fetchAdminOrderById(order.id);
+            setSelectedOrderDetails(details);
+        } catch (e) {
+            console.error('Failed to load order details', e);
+            toast.error(t('Impossible de charger les détails de commande', 'Failed to load order details'));
+        } finally {
+            setIsLoadingOrderDetails(false);
         }
     };
 
@@ -108,6 +192,34 @@ export default function AdminDashboard() {
             toast.success("Utilisateur vérifié avec succès");
         } catch (error) {
             toast.error("Erreur lors de la vérification");
+        }
+    };
+
+    const handleRejectUser = async () => {
+        if (!userToReject || !rejectionReason) return;
+        try {
+            await rejectUser(userToReject.id, rejectionReason);
+            const usersData = await fetchAdminUsers();
+            setUsers(usersData);
+            toast.success("Utilisateur refusé");
+            setIsRejectModalOpen(false);
+            setUserToReject(null);
+            setRejectionReason('');
+        } catch (error) {
+            toast.error("Erreur lors du refus");
+        }
+    };
+
+    const handleSaveSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingSettings(true);
+        try {
+            await updateAdminSettings(settings);
+            toast.success("Paramètres enregistrés");
+        } catch (error) {
+            toast.error("Erreur lors de l'enregistrement");
+        } finally {
+            setIsSavingSettings(false);
         }
     };
 
@@ -146,6 +258,16 @@ export default function AdminDashboard() {
         e.preventDefault();
         try {
             const currentData = { ...productForm };
+
+            try {
+                if (typeof currentData.specifications === 'string') {
+                    JSON.parse(currentData.specifications);
+                }
+            } catch {
+                toast.error(t('Le champ spécifications doit être un JSON valide', 'Specifications must be valid JSON'));
+                return;
+            }
+
             if (editingProduct) {
                 await updateProduct(editingProduct.id, currentData);
                 toast.success("Produit mis à jour !");
@@ -197,20 +319,39 @@ export default function AdminDashboard() {
             if (editingBrand) {
                 await updateBrand(editingBrand.id, brandForm);
                 toast.success("Marque mise à jour !");
+            } else {
+                setIsCreatingBrand(true);
+                await createBrand(brandForm);
+                toast.success("Marque créée !");
             }
             setIsBrandModalOpen(false);
             const brandsData = await fetchBrands();
             setBrands(brandsData);
         } catch (error) {
             toast.error("Erreur lors de la sauvegarde de la marque.");
+        } finally {
+            setIsCreatingBrand(false);
+        }
+    };
+
+    const handleDeleteBrand = async (brandId: number) => {
+        if (!confirm(t('Supprimer cette marque ?', 'Delete this brand?'))) return;
+        try {
+            await deleteBrand(brandId);
+            const brandsData = await fetchBrands();
+            setBrands(brandsData);
+            toast.success(t('Marque supprimée', 'Brand deleted'));
+        } catch (e) {
+            console.error(e);
+            toast.error(t('Erreur suppression marque', 'Failed to delete brand'));
         }
     };
 
     const stats = [
-        { label: 'Revenu Total', value: `MAD ${(dashboardStats.total || 0).toLocaleString()}`, icon: TrendingUp },
-        { label: 'Commandes', value: dashboardStats.count || orders.length, icon: ShoppingCart },
-        { label: 'Cliniciens Inscrits', value: users.length, icon: Users },
-        { label: 'Produits Active', value: products.length, icon: Package },
+        { label: t('Utilisateurs', 'Users'), value: users.length, icon: Users },
+        { label: t('Commandes', 'Orders'), value: adminSummary?.stats?.count ?? orders.length, icon: ShoppingCart },
+        { label: t('Produits', 'Products'), value: products.length, icon: Package },
+        { label: t('Revenu (H.T)', 'Revenue (Excl. Tax)'), value: `MAD ${Number(adminSummary?.stats?.total || 0).toLocaleString()}`, icon: TrendingUp }
     ];
 
     if (loading) return (
@@ -234,11 +375,12 @@ export default function AdminDashboard() {
 
                 <nav className="flex-1 px-4 space-y-1">
                     {[
-                        { id: 'dashboard', name: 'Accueil', icon: LayoutDashboard },
-                        { id: 'orders', name: 'Commandes', icon: ShoppingCart },
-                        { id: 'products', name: 'Produits', icon: Package },
-                        { id: 'customers', name: 'Clients', icon: Users },
-                        { id: 'brands', name: 'Marques', icon: ShieldCheck },
+                        { id: 'dashboard', name: t('Tableau de bord', 'Dashboard'), icon: LayoutDashboard },
+                        { id: 'orders', name: t('Commandes', 'Orders'), icon: ShoppingCart },
+                        { id: 'products', name: t('Produits', 'Products'), icon: Package },
+                        { id: 'customers', name: t('Clients', 'Customers'), icon: Users },
+                        { id: 'brands', name: t('Marques', 'Brands'), icon: ShieldCheck },
+                        { id: 'settings', name: t('Paramètres', 'Settings'), icon: Settings },
                     ].map((item) => (
                         <button
                             key={item.id}
@@ -285,6 +427,295 @@ export default function AdminDashboard() {
                 </header>
 
                 <div className="max-w-6xl mx-auto">
+                    {activeTab === 'settings' && (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in duration-500">
+                            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">{t('Paramètres de la Plateforme', 'Platform Settings')}</h2>
+                                    <p className="text-sm text-gray-500 mt-1">{t('Gérez les configurations globales, les frais et les contacts.', 'Manage global configurations, fees, and contacts.')}</p>
+                                </div>
+                                <button
+                                    onClick={handleSaveSettings}
+                                    disabled={isSavingSettings}
+                                    className="bg-medical-blue hover:bg-medical-blue-dark text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-medical-blue/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {isSavingSettings ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {t('Sauvegarder les modifications', 'Save Changes')}
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSaveSettings} className="p-8 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                                    {/* Contact Section */}
+                                    <div className="space-y-6">
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Users className="w-4 h-4" /> {t('Support & Contact', 'Support & Contact')}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">{t('Numéro WhatsApp', 'WhatsApp Number')}</label>
+                                                <input
+                                                    type="text"
+                                                    value={settings.find(s => s.key === 'whatsapp_number')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'whatsapp_number' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Email de Support</label>
+                                                <input
+                                                    type="email"
+                                                    value={settings.find(s => s.key === 'support_email')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'support_email' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Financials Section */}
+                                    <div className="space-y-6">
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4" /> Logistique & Taxes
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Frais de Livraison Standard (MAD)</label>
+                                                <input
+                                                    type="number"
+                                                    value={settings.find(s => s.key === 'shipping_standard')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'shipping_standard' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Seuil Livraison Gratuite (MAD)</label>
+                                                <input
+                                                    type="number"
+                                                    value={settings.find(s => s.key === 'shipping_free_threshold')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'shipping_free_threshold' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Taux TVA (%)</label>
+                                                <input
+                                                    type="number"
+                                                    value={settings.find(s => s.key === 'vat_rate')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'vat_rate' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Announcements Section */}
+                                    <div className="col-span-full space-y-6 pt-4 border-t border-gray-100">
+                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <LayoutDashboard className="w-4 h-4" /> Communication Boutique
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Texte de la Bannière</label>
+                                                <textarea
+                                                    rows={3}
+                                                    value={settings.find(s => s.key === 'banner_text')?.value || ''}
+                                                    onChange={e => setSettings(settings.map(s => s.key === 'banner_text' ? { ...s, value: e.target.value } : s))}
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-medical-blue/10 outline-none"
+                                                    placeholder="Promotion, annonce important..."
+                                                />
+                                            </div>
+                                            <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-amber-900">Mode Maintenance</h4>
+                                                        <p className="text-xs text-amber-700 mt-1">Désactive les commandes sur toute la boutique.</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSettings(settings.map(s => s.key === 'maintenance_mode' ? { ...s, value: s.value === 'true' ? 'false' : 'true' } : s))}
+                                                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.find(s => s.key === 'maintenance_mode')?.value === 'true' ? 'bg-amber-600' : 'bg-gray-300'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.find(s => s.key === 'maintenance_mode')?.value === 'true' ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {activeTab === 'customers' && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <input
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder={t('Rechercher: email / clinique / INPE', 'Search: email / clinic / INPE')}
+                                            className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm w-80 max-w-full focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                        />
+                                    </div>
+                                    <select
+                                        value={customerStatusFilter}
+                                        onChange={(e) => setCustomerStatusFilter(e.target.value)}
+                                        className="border border-gray-200 rounded-lg px-2 py-2 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                    >
+                                        <option value="">{t('Tous statuts', 'All statuses')}</option>
+                                        <option value="pending">{t('En attente', 'Pending')}</option>
+                                        <option value="verified">{t('Vérifié', 'Verified')}</option>
+                                        <option value="rejected">{t('Rejeté', 'Rejected')}</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const usersData = await fetchAdminUsers();
+                                            setUsers(usersData);
+                                        } catch {
+                                            toast.error(t('Erreur de chargement', 'Failed to load'));
+                                        }
+                                    }}
+                                    className="bg-medical-blue hover:bg-medical-blue-dark text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+                                >
+                                    {t('Rafraîchir', 'Refresh')}
+                                </button>
+                            </div>
+
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3">{t('Utilisateur', 'User')}</th>
+                                        <th className="px-6 py-3">{t('Clinique', 'Clinic')}</th>
+                                        <th className="px-6 py-3">INPE</th>
+                                        <th className="px-6 py-3">{t('Statut', 'Status')}</th>
+                                        <th className="px-6 py-3 text-right">{t('Actions', 'Actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {users
+                                        .filter((u: any) => {
+                                            const s = searchTerm.toLowerCase();
+                                            if (!s) return true;
+                                            return String(u.email || '').toLowerCase().includes(s) ||
+                                                String(u.clinic_name || '').toLowerCase().includes(s) ||
+                                                String(u.inpe_number || '').toLowerCase().includes(s) ||
+                                                String(u.full_name || '').toLowerCase().includes(s);
+                                        })
+                                        .filter((u: any) => (customerStatusFilter ? u.verification_status === customerStatusFilter : true))
+                                        .map((u: any) => (
+                                            <tr key={u.id} className="hover:bg-gray-50/50">
+                                                <td className="px-6 py-4">
+                                                    <div className="font-semibold text-gray-900">{u.full_name || '-'}</div>
+                                                    <div className="text-xs text-gray-400">{u.email}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-semibold text-gray-900">{u.clinic_name || '-'}</div>
+                                                    <div className="text-xs text-gray-400">{u.city || 'Casablanca'}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-700 font-mono text-xs">{u.inpe_number || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                        u.verification_status === 'verified' ? 'bg-emerald-100 text-emerald-800' :
+                                                            u.verification_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                'bg-amber-100 text-amber-800'
+                                                    }`}>
+                                                        {u.verification_status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {u.verification_license_url ? (
+                                                        <button
+                                                            onClick={() => handleDownloadLicense(u.verification_license_url)}
+                                                            className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 font-semibold mr-2"
+                                                        >
+                                                            {t('Licence', 'License')}
+                                                        </button>
+                                                    ) : null}
+                                                    {u.verification_status !== 'verified' ? (
+                                                        <button
+                                                            onClick={() => handleVerifyUser(u.id)}
+                                                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold mr-2"
+                                                        >
+                                                            {t('Vérifier', 'Verify')}
+                                                        </button>
+                                                    ) : null}
+                                                    {u.verification_status !== 'rejected' ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                setUserToReject(u);
+                                                                setIsRejectModalOpen(true);
+                                                            }}
+                                                            className="px-3 py-1.5 rounded-lg bg-red-600 text-white font-bold"
+                                                        >
+                                                            {t('Rejeter', 'Reject')}
+                                                        </button>
+                                                    ) : null}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {activeTab === 'brands' && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">{t('Marques', 'Brands')}</h2>
+                                <button
+                                    onClick={() => openBrandModal()}
+                                    className="bg-medical-blue hover:bg-medical-blue-dark text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95"
+                                >
+                                    <Plus className="w-4 h-4" /> {t('Nouvelle Marque', 'New Brand')}
+                                </button>
+                            </div>
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3">{t('Nom', 'Name')}</th>
+                                        <th className="px-6 py-3">{t('Manufacturer', 'Manufacturer')}</th>
+                                        <th className="px-6 py-3">{t('CE', 'CE')}</th>
+                                        <th className="px-6 py-3 text-right">{t('Actions', 'Actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {brands
+                                        .filter((b: any) => {
+                                            const s = searchTerm.toLowerCase();
+                                            if (!s) return true;
+                                            return String(b.name || '').toLowerCase().includes(s) || String(b.manufacturer || '').toLowerCase().includes(s);
+                                        })
+                                        .map((b: any) => (
+                                            <tr key={b.id} className="hover:bg-gray-50/50 group">
+                                                <td className="px-6 py-4 font-semibold text-gray-900">{b.name}</td>
+                                                <td className="px-6 py-4 text-gray-600">{b.manufacturer || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    {b.ce_certificate_url ? (
+                                                        <a href={b.ce_certificate_url} target="_blank" className="text-medical-blue font-bold text-xs">LINK</a>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => openBrandModal(b)} className="p-1.5 text-gray-400 hover:text-medical-blue hover:bg-medical-blue/5 rounded-md">
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteBrand(Number(b.id))} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md ml-1">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
                     {activeTab === 'dashboard' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -303,20 +734,20 @@ export default function AdminDashboard() {
 
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="px-6 py-4 border-b border-gray-200">
-                                    <h2 className="text-base font-semibold text-gray-900">Commandes Récentes</h2>
+                                    <h2 className="text-base font-semibold text-gray-900">{t('Commandes Récentes', 'Recent Orders')}</h2>
                                 </div>
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-[#f9fafb] text-gray-500 font-medium">
                                         <tr>
-                                            <th className="px-6 py-3">Commande</th>
-                                            <th className="px-6 py-3">Date</th>
-                                            <th className="px-6 py-3">Total</th>
-                                            <th className="px-6 py-3">Statut</th>
+                                            <th className="px-6 py-3">{t('Commande', 'Order')}</th>
+                                            <th className="px-6 py-3">{t('Date', 'Date')}</th>
+                                            <th className="px-6 py-3">{t('Total', 'Total')}</th>
+                                            <th className="px-6 py-3">{t('Statut', 'Status')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
-                                        {orders.slice(0, 5).map(order => (
-                                            <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                                        {(adminSummary?.recent_orders || orders.slice(0, 5)).map((order: any) => (
+                                            <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openOrderModal(order)}>
                                                 <td className="px-6 py-4 font-medium text-gray-900">#{order.id.toString().slice(0, 6)}</td>
                                                 <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4 text-gray-900 font-semibold">MAD {order.total_amount}</td>
@@ -332,31 +763,189 @@ export default function AdminDashboard() {
                                     </tbody>
                                 </table>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t('Vérifications', 'Verifications')}</div>
+                                    <div className="text-3xl font-black text-gray-900">{adminSummary?.pending_verifications ?? 0}</div>
+                                    <div className="text-sm text-gray-500">{t('Comptes en attente', 'Pending accounts')}</div>
+                                </div>
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t('Stock critique', 'Low stock')}</div>
+                                    <div className="text-3xl font-black text-gray-900">{adminSummary?.low_stock_count ?? 0}</div>
+                                    <div className="text-sm text-gray-500">{t('Produits <= 5 unités', 'Products <= 5 units')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'orders' && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <input
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder={t('Rechercher par ID / email / clinique', 'Search by ID / email / clinic')}
+                                            className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm w-72 max-w-full focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                        />
+                                    </div>
+                                    <select
+                                        value={orderStatusFilter}
+                                        onChange={(e) => setOrderStatusFilter(e.target.value)}
+                                        className="border border-gray-200 rounded-lg px-2 py-2 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                    >
+                                        <option value="">{t('Tous statuts', 'All statuses')}</option>
+                                        <option value="pending">{t('En attente', 'Pending')}</option>
+                                        <option value="processing">{t('Traitement', 'Processing')}</option>
+                                        <option value="shipped">{t('Expédiée', 'Shipped')}</option>
+                                        <option value="delivered">{t('Livrée', 'Delivered')}</option>
+                                        <option value="cancelled">{t('Annulée', 'Cancelled')}</option>
+                                    </select>
+                                    <select
+                                        value={ordersLimit}
+                                        onChange={(e) => {
+                                            setOrdersLimit(parseInt(e.target.value));
+                                            setOrdersOffset(0);
+                                        }}
+                                        className="border border-gray-200 rounded-lg px-2 py-2 text-sm font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={25}>25</option>
+                                        <option value={50}>50</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const ordersData = await fetchAdminOrders({ status: orderStatusFilter || undefined, q: searchTerm || undefined, limit: ordersLimit, offset: ordersOffset });
+                                            setOrders(ordersData);
+                                        } catch (e) {
+                                            toast.error(t('Erreur de chargement', 'Failed to load'));
+                                        }
+                                    }}
+                                    className="bg-medical-blue hover:bg-medical-blue-dark text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+                                >
+                                    {t('Appliquer', 'Apply')}
+                                </button>
+                            </div>
+
+                            <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between text-sm">
+                                <div className="text-gray-500">Offset: {ordersOffset}</div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const next = Math.max(0, ordersOffset - ordersLimit);
+                                            setOrdersOffset(next);
+                                            try {
+                                                const ordersData = await fetchAdminOrders({ status: orderStatusFilter || undefined, q: searchTerm || undefined, limit: ordersLimit, offset: next });
+                                                setOrders(ordersData);
+                                            } catch {
+                                                toast.error(t('Erreur de chargement', 'Failed to load'));
+                                            }
+                                        }}
+                                        disabled={ordersOffset === 0}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 font-semibold disabled:opacity-40"
+                                    >
+                                        {t('Précédent', 'Prev')}
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            const next = ordersOffset + ordersLimit;
+                                            setOrdersOffset(next);
+                                            try {
+                                                const ordersData = await fetchAdminOrders({ status: orderStatusFilter || undefined, q: searchTerm || undefined, limit: ordersLimit, offset: next });
+                                                setOrders(ordersData);
+                                            } catch {
+                                                toast.error(t('Erreur de chargement', 'Failed to load'));
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 font-semibold"
+                                    >
+                                        {t('Suivant', 'Next')}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3">ID</th>
+                                        <th className="px-6 py-3">Date</th>
+                                        <th className="px-6 py-3">Client</th>
+                                        <th className="px-6 py-3">Total</th>
+                                        <th className="px-6 py-3">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {orders
+                                        .filter((o) => {
+                                            if (!searchTerm) return true;
+                                            const s = searchTerm.toLowerCase();
+                                            return (
+                                                String(o.id).toLowerCase().includes(s) ||
+                                                String(o.user_email || '').toLowerCase().includes(s) ||
+                                                String(o.user_clinic_name || '').toLowerCase().includes(s)
+                                            );
+                                        })
+                                        .filter((o) => (orderStatusFilter ? o.status === orderStatusFilter : true))
+                                        .map((order) => (
+                                            <tr key={order.id} className="hover:bg-gray-50/50 cursor-pointer" onClick={() => openOrderModal(order)}>
+                                                <td className="px-6 py-4 font-bold text-gray-900">#{order.id.toString().slice(0, 8)}</td>
+                                                <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleString('fr-FR')}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-semibold text-gray-900">{order.user_clinic_name || t('Invité', 'Guest')}</div>
+                                                    <div className="text-xs text-gray-400">{order.user_email || '-'}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-900 font-bold">MAD {order.total_amount}</td>
+                                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                                    <select
+                                                        value={order.status}
+                                                        onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                                                        className="border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
+                                                    >
+                                                        <option value="pending">{t('En attente', 'Pending')}</option>
+                                                        <option value="processing">{t('Traitement', 'Processing')}</option>
+                                                        <option value="shipped">{t('Expédiée', 'Shipped')}</option>
+                                                        <option value="delivered">{t('Livrée', 'Delivered')}</option>
+                                                        <option value="cancelled">{t('Annulée', 'Cancelled')}</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
 
                     {activeTab === 'products' && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">Catalogue de Produits</h2>
+                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">{t('Catalogue de Produits', 'Product Catalog')}</h2>
                                 <button
                                     onClick={() => openProductModal()}
                                     className="bg-medical-blue hover:bg-medical-blue-dark text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95"
                                 >
-                                    <Plus className="w-4 h-4" /> Nouveau Produit
+                                    <Plus className="w-4 h-4" /> {t('Nouveau Produit', 'New Product')}
                                 </button>
                             </div>
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
                                     <tr>
-                                        <th className="px-6 py-3">Produit</th>
-                                        <th className="px-6 py-3">SKU</th>
-                                        <th className="px-6 py-3">Prix</th>
-                                        <th className="px-6 py-3 text-right">Actions</th>
+                                        <th className="px-6 py-3">{t('Produit', 'Product')}</th>
+                                        <th className="px-6 py-3">{t('SKU', 'SKU')}</th>
+                                        <th className="px-6 py-3">{t('Prix', 'Price')}</th>
+                                        <th className="px-6 py-3 text-right">{t('Actions', 'Actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(product => (
+                                    {products.filter((p: any) => {
+                                        const s = searchTerm.toLowerCase();
+                                        if (!s) return true;
+                                        return String(p.name || '').toLowerCase().includes(s) || String(p.sku || '').toLowerCase().includes(s);
+                                    }).map((product: any) => (
                                         <tr key={product.id} className="hover:bg-gray-50/50 group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
@@ -392,207 +981,100 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {activeTab === 'orders' && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-3">ID</th>
-                                        <th className="px-6 py-3">Date</th>
-                                        <th className="px-6 py-3">Client</th>
-                                        <th className="px-6 py-3">Total</th>
-                                        <th className="px-6 py-3">Statut</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {orders.filter(o => o.id.toString().includes(searchTerm)).map(order => (
-                                        <tr key={order.id} className="hover:bg-gray-50/50">
-                                            <td className="px-6 py-4 font-bold text-gray-900">#{order.id.toString().slice(0, 8)}</td>
-                                            <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleString('fr-FR')}</td>
-                                            <td className="px-6 py-4">Clinique {order.user_id?.slice(0, 5) || 'Guest'}</td>
-                                            <td className="px-6 py-4 text-gray-900 font-bold">MAD {order.total_amount}</td>
-                                            <td className="px-6 py-4">
-                                                <select
-                                                    value={order.status}
-                                                    onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-medical-blue/20"
-                                                >
-                                                    <option value="pending">En attente</option>
-                                                    <option value="shipped">Expédiée</option>
-                                                    <option value="delivered">Livrée</option>
-                                                    <option value="cancelled">Annulée</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    {selectedOrder && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in duration-300">
+                                <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">Détails de la Commande</h3>
+                                        <p className="text-sm text-gray-400">#{selectedOrder.id}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-white rounded-full transition-colors group">
+                                        <X className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                                    </button>
+                                </div>
+                                <div className="p-8 space-y-6">
+                                    {isLoadingOrderDetails && (
+                                        <div className="text-sm text-gray-500">{t('Chargement...', 'Loading...')}</div>
+                                    )}
 
-                    {activeTab === 'customers' && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">Gestion des Clients / Cliniques</h2>
-                            </div>
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-[#f9fafb] text-gray-500 font-medium border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-3">Client</th>
-                                        <th className="px-6 py-3">Informations</th>
-                                        <th className="px-6 py-3">Inscription</th>
-                                        <th className="px-6 py-3">Statut</th>
-                                        <th className="px-6 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {users.filter(u => `${u.full_name} ${u.clinic_name}`.toLowerCase().includes(searchTerm.toLowerCase())).map(user => (
-                                        <tr key={user.id} className="hover:bg-gray-50/50">
-                                            <td className="px-6 py-4">
-                                                <div className="font-semibold text-gray-900">{user.full_name}</div>
-                                                <div className="text-gray-500">{user.clinic_name}</div>
-                                                <div className="text-xs text-gray-400 mt-1">{user.email}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-gray-900">{user.specialty || '-'}</div>
-                                                <div className="text-gray-500 text-xs">INPE: {user.inpe_number || '-'}</div>
-                                                <div className="text-gray-500 text-xs">{user.city || '-'}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-500">
-                                                {new Date(user.created_at).toLocaleDateString('fr-FR')}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
-                                                    ${user.verification_status === 'verified' ? 'bg-emerald-100 text-emerald-800' :
-                                                        user.verification_status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                    {user.verification_status || 'verified'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {user.verification_status === 'pending' && (
-                                                    <button
-                                                        onClick={() => handleVerifyUser(user.id)}
-                                                        className="bg-medical-blue hover:bg-medical-blue-dark text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
-                                                    >
-                                                        Approuver
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {activeTab === 'brands' && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h2 className="text-base font-semibold text-gray-900 tracking-tight">Gestion des Marques & Partenaires</h2>
-                            </div>
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-[#f9fafb] text-gray-500 font-medium">
-                                    <tr>
-                                        <th className="px-6 py-3">Marque</th>
-                                        <th className="px-6 py-3">Fabricant</th>
-                                        <th className="px-6 py-3">Certificats CE</th>
-                                        <th className="px-6 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {brands.map(brand => (
-                                        <tr key={brand.id} className="hover:bg-gray-50/50 group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 p-1 relative overflow-hidden flex-shrink-0">
-                                                        {brand.logo_url ? (
-                                                            <Image src={brand.logo_url} alt="" fill sizes="48px" className="object-contain p-1" />
-                                                        ) : (
-                                                            <ShieldCheck className="w-6 h-6 text-gray-300" />
-                                                        )}
-                                                    </div>
-                                                    <div className="font-semibold text-gray-900">{brand.name}</div>
+                                    {!isLoadingOrderDetails && selectedOrderDetails && (
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-2 gap-8">
+                                                <div>
+                                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Client', 'Customer')}</div>
+                                                    <div className="text-sm text-gray-900 font-medium">{selectedOrderDetails.user_clinic_name || t('Invité', 'Guest')}</div>
+                                                    <div className="text-sm text-gray-500">{selectedOrderDetails.user_email || '-'}</div>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-500">{brand.manufacturer || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                {brand.ce_certificate_url ? (
-                                                    <span className="text-emerald-600 font-bold text-xs uppercase flex items-center gap-1">
-                                                        <CheckCircle2 className="w-4 h-4" /> Disponible
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 text-xs italic">Non renseigné</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => openBrandModal(brand)} className="p-1.5 text-gray-400 hover:text-medical-blue hover:bg-medical-blue/5 rounded-md">
-                                                    <Edit2 className="w-4 h-4" />
+                                                <div className="text-right">
+                                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Montant', 'Amount')}</div>
+                                                    <div className="text-2xl font-black text-medical-blue">MAD {selectedOrderDetails.total_amount}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/20">
+                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{t('Livraison', 'Shipping')}</div>
+                                                <div className="text-sm text-gray-900 font-medium">
+                                                    {selectedOrderDetails.shipping_first_name || ''} {selectedOrderDetails.shipping_last_name || ''}
+                                                </div>
+                                                <div className="text-sm text-gray-500">{selectedOrderDetails.shipping_phone || '-'}</div>
+                                                <div className="text-sm text-gray-500">{selectedOrderDetails.shipping_street_address || '-'}</div>
+                                                <div className="text-sm text-gray-500">{selectedOrderDetails.shipping_city || 'Casablanca'} {selectedOrderDetails.shipping_zip_code || ''}</div>
+                                            </div>
+
+                                            <div className="border border-gray-100 rounded-xl p-4 bg-white">
+                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{t('Articles', 'Items')}</div>
+                                                <div className="space-y-2">
+                                                    {(selectedOrderDetails.items || []).map((it: any) => (
+                                                        <div key={it.id} className="flex items-start justify-between gap-4">
+                                                            <div>
+                                                                <div className="text-sm font-semibold text-gray-900">{it.name}</div>
+                                                                <div className="text-xs text-gray-400 font-mono">{it.sku || ''}</div>
+                                                                {it.selected_variant ? (
+                                                                    <div className="text-xs text-gray-500">{t('Variante', 'Variant')}: {it.selected_variant}</div>
+                                                                ) : null}
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-sm text-gray-900 font-semibold">x{it.quantity}</div>
+                                                                <div className="text-xs text-gray-500">MAD {it.price_per_unit_at_purchase}</div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/20">
+                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Statut actuel</div>
+                                        <div className="flex gap-2">
+                                            {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleUpdateStatus(selectedOrder.id, s)}
+                                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${selectedOrder.status === s
+                                                        ? 'bg-medical-blue text-white border-medical-blue shadow-lg shadow-medical-blue/20'
+                                                        : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'}`}
+                                                >
+                                                    {s.toUpperCase()}
                                                 </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="px-8 py-6 bg-gray-50 flex justify-end">
+                                    <button
+                                        onClick={() => handleDownloadInvoicePdf(selectedOrder.id)}
+                                        className="bg-white border border-gray-200 text-gray-900 px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:border-gray-300 transition-all flex items-center gap-2"
+                                    >
+                                        <FileText className="w-4 h-4" /> Télécharger Facture
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
-                </div>
-            </main>
 
-            {/* ORDER DETAIL MODAL */}
-            {selectedOrder && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in duration-300">
-                        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-900">Détails de la Commande</h3>
-                                <p className="text-sm text-gray-400">#{selectedOrder.id}</p>
-                            </div>
-                            <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-white rounded-full transition-colors group">
-                                <X className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                            </button>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-8">
-                                <div>
-                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Livraison</div>
-                                    <div className="text-sm text-gray-900 font-medium">Casablanca, Maroc</div>
-                                    <div className="text-sm text-gray-500">Adresse de Clinique enregistrée</div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Montant</div>
-                                    <div className="text-2xl font-black text-medical-blue">MAD {selectedOrder.total_amount}</div>
-                                </div>
-                            </div>
-                            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/20">
-                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Statut actuel</div>
-                                <div className="flex gap-2">
-                                    {['pending', 'shipped', 'delivered'].map((s) => (
-                                        <button
-                                            key={s}
-                                            onClick={() => handleUpdateStatus(selectedOrder.id, s)}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${selectedOrder.status === s
-                                                ? 'bg-medical-blue text-white border-medical-blue shadow-lg shadow-medical-blue/20'
-                                                : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'}`}
-                                        >
-                                            {s.toUpperCase()}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="px-8 py-6 bg-gray-50 flex justify-end">
-                            <button
-                                onClick={() => {
-                                    window.open(`${process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1'}/orders/${selectedOrder.id}/invoice`);
-                                }}
-                                className="bg-white border border-gray-200 text-gray-900 px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:border-gray-300 transition-all flex items-center gap-2"
-                            >
-                                <FileText className="w-4 h-4" /> Télécharger Facture
-                            </button>
-                        </div>
-                    </div>
                 </div>
-            )}
 
             {/* PRODUCT MODAL */}
             {isProductModalOpen && (
@@ -679,7 +1161,7 @@ export default function AdminDashboard() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[101] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl scale-in-center">
                         <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-gray-900">Éditer la Marque</h3>
+                            <h3 className="text-xl font-bold text-gray-900">{editingBrand ? 'Éditer la Marque' : 'Nouvelle Marque'}</h3>
                             <button onClick={() => setIsBrandModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-400" /></button>
                         </div>
                         <form onSubmit={handleSaveBrand} className="p-8 space-y-6">
@@ -707,12 +1189,53 @@ export default function AdminDashboard() {
                             </div>
                             <div className="pt-4 flex justify-end gap-3">
                                 <button type="button" onClick={() => setIsBrandModalOpen(false)} className="px-6 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm font-bold">Annuler</button>
-                                <button type="submit" className="px-6 py-2.5 bg-medical-blue text-white rounded-xl text-sm font-bold shadow-lg shadow-medical-blue/20">Mettre à jour</button>
+                                <button
+                                    type="submit"
+                                    disabled={isCreatingBrand}
+                                    className="px-6 py-2.5 bg-medical-blue text-white rounded-xl text-sm font-bold shadow-lg shadow-medical-blue/20 disabled:opacity-50"
+                                >
+                                    {editingBrand ? 'Mettre à jour' : 'Créer'}
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            {/* REJECT MODAL */}
+            {isRejectModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900">Refuser l'Utilisateur</h3>
+                            <button onClick={() => setIsRejectModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5 text-gray-400" /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-gray-500">
+                                Veuillez indiquer le motif du refus pour <strong>{userToReject?.full_name}</strong>. Ce motif lui sera envoyé par email.
+                            </p>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                rows={4}
+                                placeholder="Ex: Licence périmée, Numéro INPE invalide..."
+                            />
+                        </div>
+                        <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                            <button onClick={() => setIsRejectModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Annuler</button>
+                            <button
+                                onClick={handleRejectUser}
+                                disabled={!rejectionReason}
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition-all disabled:opacity-50"
+                            >
+                                Confirmer le Refus
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            </main>
         </div>
     );
 }

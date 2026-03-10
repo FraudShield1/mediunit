@@ -22,7 +22,9 @@ import {
     reorderLastOrder,
     uploadVerificationLicense,
     fetchOrderInvoice,
-    fetchCompliancePack
+    fetchCompliancePack,
+    fetchUserProfile,
+    updateUserProfile
 } from '@/app/lib/api';
 import { generateOrderInvoicePDF } from '@/app/lib/invoice';
 import ComplianceVault from './components/ComplianceVault';
@@ -34,13 +36,15 @@ import { toast } from 'react-hot-toast';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 export default function UserDashboard() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'profile'>('overview');
     const [summary, setSummary] = useState<any>(null);
+    const [profile, setProfile] = useState<any>(null);
     const { token } = useAuthStore();
     const { addItem } = useCartStore();
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [savingProfile, setSavingProfile] = useState(false);
     const [message, setMessage] = useState('');
     const { t } = useLanguageStore();
 
@@ -68,12 +72,14 @@ export default function UserDashboard() {
         }
         async function loadDashboard() {
             try {
-                const [summaryData, docsData] = await Promise.all([
+                const [summaryData, docsData, profileData] = await Promise.all([
                     fetchDashboardSummary(),
-                    fetchComplianceDocuments()
+                    fetchComplianceDocuments(),
+                    fetchUserProfile()
                 ]);
                 setSummary(summaryData);
                 setDocs(docsData);
+                setProfile(profileData);
             } catch (error) {
                 console.error("Dashboard load failed:", error);
             } finally {
@@ -138,6 +144,19 @@ export default function UserDashboard() {
         }
     };
 
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSavingProfile(true);
+        try {
+            await updateUserProfile(profile);
+            toast.success(t("Profil mis à jour", "Profile updated"));
+        } catch (error) {
+            toast.error(t("Échec de la mise à jour", "Update failed"));
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-clinic-white">
             <div className="w-12 h-12 border-4 border-medical-blue/20 border-t-medical-blue rounded-full animate-spin"></div>
@@ -176,10 +195,28 @@ export default function UserDashboard() {
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-medical-blue">{t("Statut de Vérification", "Verification Status")}</p>
-                            <p className="font-bold text-slate-gray-dark italic opacity-75">{t("Vérification demandée", "Verification requested")}</p>
+                            <p className={`font-bold italic ${profile?.verification_status === 'verified' ? 'text-emerald-600' : profile?.verification_status === 'rejected' ? 'text-red-600' : 'text-slate-gray opacity-75'}`}>
+                                {profile?.verification_status === 'verified' ? t("Compte Vérifié", "Verified Account") :
+                                    profile?.verification_status === 'rejected' ? t("Vérification Refusée", "Verification Rejected") :
+                                        t("En attente de vérification", "Awaiting verification")}
+                            </p>
                         </div>
                     </div>
                 </div>
+
+                {profile?.verification_status === 'rejected' && (
+                    <div className="bg-red-50 border border-red-100 rounded-3xl p-6 mb-8 flex items-start gap-4 animate-in slide-in-from-top duration-500">
+                        <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-1" />
+                        <div>
+                            <h4 className="font-bold text-red-900 mb-1">{t("Action Requise : Information de vérification", "Action Required: Verification Information")}</h4>
+                            <p className="text-sm text-red-700 mb-4">{t("Votre demande d'accès a été refusée pour le motif suivant :", "Your access request was rejected for the following reason:")} </p>
+                            <div className="bg-white/50 p-4 rounded-xl text-sm font-medium text-red-800 border border-red-200/50 mb-4">
+                                {profile.rejection_reason}
+                            </div>
+                            <p className="text-sm text-red-700">{t("Veuillez mettre à jour vos informations ou soumettre une nouvelle licence ci-dessous.", "Please update your information or submit a new license below.")}</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Dashboard Tabs */}
                 <div className="flex items-center gap-2 mb-8 bg-slate-gray-light/5 p-1.5 rounded-2xl w-fit">
@@ -194,6 +231,12 @@ export default function UserDashboard() {
                         className={`h-12 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${activeTab === 'documents' ? 'bg-white text-medical-blue shadow-lg shadow-medical-blue/10' : 'text-slate-gray hover:text-medical-blue'}`}
                     >
                         {t("Mes Documents (Vault)", "My Documents (Vault)")}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('profile')}
+                        className={`h-12 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all ${activeTab === 'profile' ? 'bg-white text-medical-blue shadow-lg shadow-medical-blue/10' : 'text-slate-gray hover:text-medical-blue'}`}
+                    >
+                        {t("Profil & Compte", "Profile & Account")}
                     </button>
                 </div>
 
@@ -304,8 +347,107 @@ export default function UserDashboard() {
                             </div>
                         </div>
                     </div>
-                ) : (
+                ) : activeTab === 'documents' ? (
                     <ComplianceVault documents={docs} />
+                ) : (
+                    <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+                        <form onSubmit={handleUpdateProfile} className="space-y-8">
+                            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-xl shadow-medical-blue/5 border border-slate-gray-light/10">
+                                <h3 className="text-xl font-black text-slate-gray-dark mb-8 flex items-center gap-3 uppercase tracking-tight">
+                                    <User className="w-6 h-6 text-medical-blue" />
+                                    {t("Informations Professionnelles", "Professional Information")}
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Nom Complet", "Full Name")}</label>
+                                        <input
+                                            type="text"
+                                            value={profile?.full_name || ''}
+                                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                            className="w-full h-14 px-6 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Nom de la Clinique / Cabinet", "Clinic / Office Name")}</label>
+                                        <input
+                                            type="text"
+                                            value={profile?.clinic_name || ''}
+                                            onChange={(e) => setProfile({ ...profile, clinic_name: e.target.value })}
+                                            className="w-full h-14 px-6 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Spécialité", "Specialty")}</label>
+                                        <input
+                                            type="text"
+                                            value={profile?.specialty || ''}
+                                            onChange={(e) => setProfile({ ...profile, specialty: e.target.value })}
+                                            className="w-full h-14 px-6 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Ville", "City")}</label>
+                                        <input
+                                            type="text"
+                                            value={profile?.city || ''}
+                                            onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                                            className="w-full h-14 px-6 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Numéro INPE", "INPE Number")}</label>
+                                        <input
+                                            type="text"
+                                            value={profile?.inpe_number || ''}
+                                            onChange={(e) => setProfile({ ...profile, inpe_number: e.target.value })}
+                                            className="w-full h-14 px-6 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 opacity-60">
+                                        <label className="text-[10px] font-black text-slate-gray uppercase tracking-widest ml-1">{t("Email (Lecture seule)", "Email (Read-only)")}</label>
+                                        <input
+                                            type="email"
+                                            readOnly
+                                            value={profile?.email || ''}
+                                            className="w-full h-14 px-6 bg-slate-100 rounded-2xl border-none outline-none text-slate-gray font-medium cursor-not-allowed"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-10 flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={savingProfile}
+                                        className="h-14 px-10 bg-medical-blue text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-medical-blue/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {savingProfile ? t("Enregistrement...", "Saving...") : t("Mettre à jour le profil", "Update Profile")}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-xl shadow-medical-blue/5 border border-slate-gray-light/10">
+                                <h3 className="text-xl font-black text-slate-gray-dark mb-4 flex items-center gap-3 uppercase tracking-tight">
+                                    <ShieldCheck className="w-6 h-6 text-medical-blue" />
+                                    {t("Vérification Médicale", "Medical Verification")}
+                                </h3>
+                                <p className="text-sm text-slate-gray font-medium mb-8 leading-relaxed">
+                                    {t("Soumettez une copie de votre licence d'exercice ou diplôme pour valider votre statut de praticien et débloquer les tarifs exclusifs.", "Submit a copy of your practicing license or diploma to validate your practitioner status and unlock exclusive rates.")}
+                                </p>
+
+                                <label className="w-full flex flex-col items-center justify-center gap-4 py-12 rounded-[2rem] bg-clinic-white border-2 border-dashed border-medical-blue/20 text-medical-blue cursor-pointer hover:bg-medical-blue/5 transition-all group">
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-medical-blue/5 group-hover:scale-110 transition-transform">
+                                        <Upload className="w-8 h-8" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="font-black uppercase tracking-widest text-xs mb-1">{uploading ? t('Chargement...', 'Uploading...') : t('Soumettre un nouveau document', 'Submit new document')}</p>
+                                        <p className="text-[10px] text-slate-gray font-bold italic">{t("PDF, PNG ou JPG (Max 5MB)", "PDF, PNG or JPG (Max 5MB)")}</p>
+                                    </div>
+                                    <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.png,.jpg" />
+                                </label>
+                            </div>
+                        </form>
+                    </div>
                 )}
             </main>
         </div>

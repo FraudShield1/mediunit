@@ -49,9 +49,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export async function generateStaticParams() {
     try {
         // Force fetch from the live production backend during build
-        const res = await fetch('https://mediunit-backend.a-naouri.workers.dev/api/v1/products', {
-            next: { revalidate: 0 } // No cache
-        });
+        const res = await fetch('https://mediunit-backend.a-naouri.workers.dev/api/v1/products');
         const data = await res.json();
         const products = data.data || data.items || data || [];
 

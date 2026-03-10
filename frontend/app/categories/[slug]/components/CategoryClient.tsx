@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
+import { resolveImageUrl } from '@/app/lib/api';
 import { toast } from 'react-hot-toast';
 
 interface CategoryClientProps {
@@ -89,7 +90,7 @@ export default function CategoryClient({ initialProducts, initialCategory }: Cat
                                 <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 overflow-hidden relative border border-slate-gray-light/5 group-hover:bg-medical-blue-light/30 transition-all duration-500">
                                     {product.image_url && product.image_url !== "/" ? (
                                         <Image
-                                            src={product.image_url}
+                                            src={resolveImageUrl(product.image_url)}
                                             alt={product.name}
                                             fill
                                             sizes="(max-width: 768px) 50vw, 25vw"

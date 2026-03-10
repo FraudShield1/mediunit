@@ -16,8 +16,6 @@ function SuccessContent() {
 
     const handleDownloadInvoice = async () => {
         if (!orderId) return;
-        const token = localStorage.getItem('mediunit_token');
-        if (!token) return;
         try {
             const orderData = await fetchOrderInvoice(orderId);
             generateOrderInvoicePDF(orderData);

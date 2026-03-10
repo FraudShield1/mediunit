@@ -22,6 +22,17 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [countdown, setCountdown] = useState(5);
+
+    React.useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (success && countdown > 0) {
+            timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
+        } else if (success && countdown === 0) {
+            router.push('/login');
+        }
+        return () => clearTimeout(timer);
+    }, [success, countdown, router]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -34,7 +45,6 @@ export default function RegisterPage() {
         try {
             await register(formData);
             setSuccess(true);
-            setTimeout(() => router.push('/login'), 5000);
         } catch (err: any) {
             setError(err.message || t("Échec de la demande d'accès", "Access request failed"));
         } finally {
@@ -53,8 +63,9 @@ export default function RegisterPage() {
                     <p className="text-slate-gray font-medium leading-relaxed mb-8">
                         {t("Votre demande d'accès a été transmise à notre équipe de conformité. Vous recevrez un e-mail de confirmation sous peu.", "Your access request has been forwarded to our compliance team. You will receive a confirmation email shortly.")}
                     </p>
-                    <Link href="/login" className="btn-primary w-full h-14">
-                        {t("Retour à la connexion", "Back to Login")}
+                    <Link href="/login" className="btn-primary w-full h-14 flex flex-col items-center justify-center leading-tight">
+                        <span>{t("Retour à la connexion", "Back to Login")}</span>
+                        <span className="text-[10px] opacity-70 font-medium">{t(`Redirection dans ${countdown}s...`, `Redirecting in ${countdown}s...`)}</span>
                     </Link>
                 </div>
             </div>
@@ -172,16 +183,15 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest pl-1">{t("Numéro INPE", "INPE Number")}</label>
+                            <label className="text-xs font-bold text-slate-gray-dark uppercase tracking-widest pl-1">{t("Numéro INPE (Optionnel)", "INPE Number (Optional)")}</label>
                             <div className="relative">
                                 <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-gray-light" />
                                 <input
                                     type="text"
                                     name="inpe_number"
-                                    required
                                     value={formData.inpe_number}
                                     onChange={handleChange}
-                                    placeholder="012345678"
+                                    placeholder="012345678 (Optionnel)"
                                     className="w-full h-14 pl-12 pr-4 bg-clinic-white rounded-2xl border-none focus:ring-2 focus:ring-medical-blue/20 outline-none text-slate-gray-dark font-medium transition-all"
                                 />
                             </div>

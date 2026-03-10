@@ -19,3 +19,8 @@
 
 /logo.png
   Cache-Control: public, max-age=0, must-revalidate
+  Cdn-Cache-Control: max-age=0
+  Cloudflare-CDN-Cache-Control: max-age=0
+
+/
+  Cache-Control: public, max-age=0, must-revalidate

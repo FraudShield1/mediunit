@@ -54,7 +54,7 @@ export const metadata: Metadata = {
         siteName: "MediUnit Morocco",
         images: [
             {
-                url: '/logo.png',
+                url: `/logo.png?v=${new Date().getTime()}`,
                 width: 1200,
                 height: 630,
                 alt: 'MediUnit Medical Sourcing Morocco',
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: "MediUnit - Fournisseur Médical B2B",
         description: "Dispositifs médicaux et consommables chirurgicaux au Maroc.",
-        images: ['/logo.png'],
+        images: [`/logo.png?v=${new Date().getTime()}`],
     },
 };
 
@@ -80,7 +80,7 @@ const jsonLd = {
     "@type": "MedicalOrganization",
     "name": "MediUnit",
     "url": "https://mediunit.ma",
-    "logo": "https://mediunit.ma/logo.png",
+    "logo": "https://mediunit.ma/logo.png?v=2026",
     "description": "Fournitures cliniques et kits spécialisés à l'unité. Livraison express au Maroc (Casablanca, Rabat).",
     "address": {
         "@type": "PostalAddress",

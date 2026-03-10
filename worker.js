@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import JSZip from 'jszip';
 
 async function hashPassword(password, env) {
     const encoder = new TextEncoder();
@@ -87,6 +88,21 @@ async function sendEmail(env, { to, subject, html }) {
     });
 }
 
+function jsonResponse(data, status = 200, headers = {}) {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { "Content-Type": "application/json", ...headers }
+    });
+}
+
+async function getAuthUser(request, env, corsHeaders) {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+    const token = authHeader.split(" ")[1];
+    if (!env.JWT_SECRET) return null;
+    return await verifyJWT(token, env.JWT_SECRET);
+}
+
 export default {
     async fetch(request, env) {
         const allowedOrigins = [
@@ -152,11 +168,27 @@ export default {
                 });
             }
 
-            if (path === "/api/v1/brands") {
+            if (path === "/api/v1/brands" && request.method === "GET") {
                 const { results } = await env.DB.prepare("SELECT * FROM brand").all();
                 return new Response(JSON.stringify(results), {
                     headers: { "Content-Type": "application/json", ...corsHeaders }
                 });
+            }
+
+            if (path === "/api/v1/brands" && request.method === "POST") {
+                const body = await request.json();
+                const id = body.id || Math.floor(Math.random() * 1000000);
+                await env.DB.prepare(
+                    "INSERT INTO brand (id, name, logo_url, manufacturer, notes, ce_certificate_url) VALUES (?, ?, ?, ?, ?, ?)"
+                ).bind(
+                    id,
+                    body.name || '',
+                    body.logo_url || '',
+                    body.manufacturer || '',
+                    body.notes || '',
+                    body.ce_certificate_url || ''
+                ).run();
+                return new Response(JSON.stringify({ success: true, id }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
             if (path === "/api/v1/products") {
@@ -280,7 +312,7 @@ export default {
 
                         const drawBulletPoint = (label, value) => {
                             checkNewPage(20);
-                            page.drawText('▸', { x: 45, y: yPos, size: 10, font: fontBold, color: softTeal });
+                            page.drawText('-', { x: 45, y: yPos, size: 10, font: fontBold, color: softTeal });
                             page.drawText(label, { x: 60, y: yPos, size: 10, font: fontBold, color: primaryColor });
 
                             const valStr = String(value || 'N/A');
@@ -311,15 +343,21 @@ export default {
 
                         for (const [key, value] of Object.entries(specParsed)) {
                             if (['marque', 'fabricant', 'sku', 'brand', 'manufacturer'].includes(key.toLowerCase())) continue;
-                            const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ') + ' :';
+
+                            let label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ') + ' :';
+                            if (key.toLowerCase() === 'variants') {
+                                label = t('Tailles Disponibles :', 'Available Sizes :');
+                            }
+
                             drawBulletPoint(label, Array.isArray(value) ? value.join(', ') : value);
                         }
 
                         yPos -= 10;
 
-                        // Section 3: Stérilisation & Conditionnement
-                        drawSectionTitle(t('3. Stérilisation et Conditionnement', '3. Sterilization and Packaging'));
-                        drawBulletPoint(t('Méthode :', 'Method :'), product.specifications?.includes('Stérile') ? t('Oxyde d\'éthylène (STERILE EO)', 'Ethylene Oxide (STERILE EO)') : t('Non stérile / N/A', 'Non-sterile / N/A'));
+                        // Section 3: Conformité & Documents
+                        drawSectionTitle(t('3. Conformité et Documentation', '3. Compliance and Documentation'));
+                        drawBulletPoint(t('Certificat CE :', 'CE Certificate :'), t('Disponible sur demande / Inclus dans le pack compliance', 'Available upon request / Included in compliance pack'));
+                        drawBulletPoint(t('Stérilisation :', 'Sterilization :'), product.specifications?.includes('Stérile') ? t('Oxyde d\'éthylène (STERILE EO)', 'Ethylene Oxide (STERILE EO)') : t('Non stérile / N/A', 'Non-sterile / N/A'));
                         drawBulletPoint(t('Conditionnement :', 'Packaging :'), product.packaging_type || t('Unité', 'Unit'));
 
                         yPos -= 10;
@@ -399,7 +437,8 @@ export default {
 
                 const product = await env.DB.prepare(`
           SELECT p.*, c.name as category_name, c.slug as category_slug, 
-                 b.name as brand_entity_name, b.manufacturer as brand_manufacturer
+                 b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
+                 b.ce_certificate_url as brand_ce_cert_url
           FROM product p 
           LEFT JOIN category c ON p.category_id = c.id 
           LEFT JOIN brand b ON p.brand_id = b.id 
@@ -418,7 +457,8 @@ export default {
                     category: { name: product.category_name, slug: product.category_slug },
                     brand_entity: {
                         name: product.brand_entity_name || product.brand || "MediUnit",
-                        manufacturer: product.brand_manufacturer
+                        manufacturer: product.brand_manufacturer,
+                        ce_certificate_url: product.brand_ce_cert_url
                     }
                 };
 
@@ -427,49 +467,216 @@ export default {
                 });
             }
 
-            // --- PROTECTED ROUTES (Admin & User Dashboard) ---
-            const isProtectedRoute = path.startsWith("/api/v1/admin/") || path.startsWith("/api/v1/orders/admin") || path.startsWith("/api/v1/users");
+            // --- AUTHENTICATION & ACL ---
+            const isAdminPath = path.startsWith("/api/v1/admin/") ||
+                path.startsWith("/api/v1/orders/admin") ||
+                (path === "/api/v1/users/" && request.method === "GET") ||
+                (path.match(/^\/api\/v1\/users\/[^/]+\/(verify|reject)$/) && request.method === "PATCH") ||
+                path.startsWith("/api/v1/dashboard/admin") ||
+                (path.match(/^\/api\/v1\/orders\/[^/]+\/status$/) && request.method === "PATCH");
+
+            const isUserPath = path.startsWith("/api/v1/dashboard/") ||
+                path.startsWith("/api/v1/compliance/") ||
+                path.startsWith("/api/v1/auth/profile") ||
+                (path === "/api/v1/users/verify-upload" && request.method === "POST") ||
+                (path.startsWith("/api/v1/users/license/") && request.method === "GET") ||
+                (path === "/api/v1/orders/" && request.method === "POST");
+
+            const isWriteMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+            const isSensitiveResource = path.startsWith("/api/v1/products") || path.startsWith("/api/v1/brands");
 
             let authUser = null;
-            if (isProtectedRoute) {
-                const authHeader = request.headers.get("Authorization");
-                if (!authHeader || !authHeader.startsWith("Bearer ")) {
-                    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-                }
-                const token = authHeader.split(" ")[1];
-                if (!env.JWT_SECRET) {
-                    return new Response(JSON.stringify({ error: "Server misconfiguration" }), { status: 500, headers: corsHeaders });
-                }
-                authUser = await verifyJWT(token, env.JWT_SECRET);
-
+            if (isAdminPath || isUserPath || (isWriteMethod && isSensitiveResource)) {
+                authUser = await getAuthUser(request, env, corsHeaders);
                 if (!authUser) {
-                    return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 403, headers: corsHeaders });
+                    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
                 }
+
+                // RBAC: Check Admin privileges
+                if (isAdminPath || (isWriteMethod && isSensitiveResource)) {
+                    if (authUser.role !== 'admin') {
+                        return jsonResponse({ error: "Forbidden: Admin access required" }, 403, corsHeaders);
+                    }
+                }
+            }
+
+            // --- COMPLIANCE VAULT ---
+            if (path === "/api/v1/dashboard/compliance" && request.method === "GET") {
+                const results = await env.DB.prepare(`
+                    SELECT DISTINCT b.name, b.ce_certificate_url as download_url, 'CE Certificate' as type
+                    FROM "order" o
+                    JOIN order_item oi ON o.id = oi.order_id
+                    JOIN product p ON oi.product_id = p.id
+                    JOIN brand b ON p.brand_id = b.id
+                    WHERE o.user_id = ? AND b.ce_certificate_url IS NOT NULL
+                `).bind(authUser.sub).all();
+
+                return jsonResponse(results.results || [], 200, corsHeaders);
+            }
+
+            // --- REGULATORY PACK (ZIP) ---
+            if (path.startsWith("/api/v1/compliance/pack/") && request.method === "GET") {
+                const orderId = path.split("/")[4];
+
+                // Verify order ownership
+                const order = await env.DB.prepare('SELECT id FROM "order" WHERE id = ? AND user_id = ?')
+                    .bind(orderId, authUser.sub).first();
+
+                if (!order) {
+                    return jsonResponse({ error: "Order not found or access denied" }, 404, corsHeaders);
+                }
+
+                // Fetch products and brands for this order
+                const products = await env.DB.prepare(`
+                    SELECT p.name, p.slug, b.name as brand_name, b.ce_certificate_url
+                    FROM order_item oi
+                    JOIN product p ON oi.product_id = p.id
+                    JOIN brand b ON p.brand_id = b.id
+                    WHERE oi.order_id = ?
+                `).bind(orderId).all();
+
+                const zip = new JSZip();
+                const folder = zip.folder(`MediUnit_Regulatory_Pack_Order_${orderId}`);
+
+                // 1. Fetch Technical Sheets (as PDF bytes)
+                // Note: Worker-to-worker or internal fetch might be tricky,
+                // but since the spec-pdf logic is in this same file, we can ideally refactor it.
+                // For now, let's just attempt to fetch them using the public API or mock info.
+                // Better approach: Call the spec-pdf handler logic directly or if not possible, skip for now and add a README.
+
+                for (const p of products.results) {
+                    // Logic to add Tech Sheet if possible
+                    // In a Cloudflare Worker, we can't easily "fetch self" with a relative URL.
+                    // We'll focus on the Brand CE Certificates first.
+                    if (p.ce_certificate_url) {
+                        try {
+                            const certResp = await fetch(p.ce_certificate_url);
+                            if (certResp.ok) {
+                                const certBytes = await certResp.arrayBuffer();
+                                folder.file(`CE_Certificate_${p.brand_name.replace(/[^a-z0-9]/gi, '_')}.pdf`, certBytes);
+                            }
+                        } catch (e) { console.error("Error fetching CE cert", p.ce_certificate_url, e); }
+                    }
+                }
+
+                const zipBytes = await zip.generateAsync({ type: "uint8array" });
+
+                return new Response(zipBytes, {
+                    headers: {
+                        "Content-Type": "application/zip",
+                        "Content-Disposition": `attachment; filename="MediUnit_Pack_${orderId}.zip"`,
+                        ...corsHeaders
+                    }
+                });
             }
 
             if (path === "/api/v1/orders/admin/all" && request.method === "GET") {
-                const { results } = await env.DB.prepare("SELECT * FROM \"order\" ORDER BY created_at DESC").all();
-                return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                const status = url.searchParams.get("status");
+                const q = url.searchParams.get("q");
+                const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") || "200")));
+                const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0"));
+
+                let sql = `
+                    SELECT o.*, u.email as user_email, u.clinic_name as user_clinic_name
+                    FROM "order" o
+                    LEFT JOIN user u ON o.user_id = u.id
+                    WHERE 1=1
+                `;
+                const args = [];
+
+                if (status) {
+                    sql += " AND o.status = ?";
+                    args.push(status);
+                }
+
+                if (q) {
+                    sql += " AND (CAST(o.id AS TEXT) LIKE ? OR u.email LIKE ? OR u.clinic_name LIKE ?)";
+                    args.push(`%${q}%`, `%${q}%`, `%${q}%`);
+                }
+
+                sql += " ORDER BY o.created_at DESC LIMIT ? OFFSET ?";
+                args.push(limit, offset);
+
+                const { results } = await env.DB.prepare(sql).bind(...args).all();
+                return jsonResponse(results, 200, corsHeaders);
+            }
+
+            if (path.match(/^\/api\/v1\/orders\/admin\/([^/]+)$/) && request.method === "GET") {
+                const orderId = path.split("/")[5];
+
+                const order = await env.DB.prepare(`
+                    SELECT o.*, 
+                           a.first_name as shipping_first_name, a.last_name as shipping_last_name, a.phone as shipping_phone,
+                           a.street_address as shipping_street_address, a.city as shipping_city, a.zip_code as shipping_zip_code,
+                           u.email as user_email, u.clinic_name as user_clinic_name, u.verification_status as user_verification_status
+                    FROM "order" o
+                    LEFT JOIN address a ON o.shipping_address_id = a.id
+                    LEFT JOIN user u ON o.user_id = u.id
+                    WHERE o.id = ?
+                `).bind(orderId).first();
+
+                if (!order) {
+                    return jsonResponse({ error: "Order not found" }, 404, corsHeaders);
+                }
+
+                const items = await env.DB.prepare(`
+                    SELECT oi.*, p.name, p.sku, p.image_url
+                    FROM order_item oi
+                    JOIN product p ON oi.product_id = p.id
+                    WHERE oi.order_id = ?
+                    ORDER BY oi.id ASC
+                `).bind(orderId).all();
+
+                return jsonResponse({ ...order, items: items.results || [] }, 200, corsHeaders);
             }
 
             if (path === "/api/v1/users/" && request.method === "GET") {
-                const { results } = await env.DB.prepare("SELECT * FROM user ORDER BY created_at DESC").all();
-                return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                const { results } = await env.DB.prepare(`
+                    SELECT id, email, full_name, clinic_name, specialty, inpe_number, city,
+                           verification_status, role, rejection_reason, verification_license_url, created_at
+                    FROM user
+                    ORDER BY created_at DESC
+                `).all();
+                return jsonResponse(results, 200, corsHeaders);
             }
 
             if (path.match(/^\/api\/v1\/orders\/([^/]+)\/status$/) && request.method === "PATCH") {
                 const orderId = path.split("/")[4];
                 const newStatus = url.searchParams.get("status") || "pending";
+                const allowed = new Set(["pending", "processing", "shipped", "delivered", "cancelled"]);
+                if (!allowed.has(newStatus)) {
+                    return jsonResponse({ error: "Invalid status" }, 400, corsHeaders);
+                }
+
+                const current = await env.DB.prepare("SELECT status FROM \"order\" WHERE id = ?").bind(orderId).first();
+                if (!current) {
+                    return jsonResponse({ error: "Order not found" }, 404, corsHeaders);
+                }
+
+                const transitions = {
+                    pending: new Set(["processing", "cancelled"]),
+                    processing: new Set(["shipped", "cancelled"]),
+                    shipped: new Set(["delivered"]),
+                    delivered: new Set([]),
+                    cancelled: new Set([]),
+                };
+
+                const from = current.status || "pending";
+                const isAllowed = transitions[from]?.has(newStatus) || from === newStatus;
+                if (!isAllowed) {
+                    return jsonResponse({ error: `Invalid status transition: ${from} -> ${newStatus}` }, 400, corsHeaders);
+                }
+
                 await env.DB.prepare("UPDATE \"order\" SET status = ? WHERE id = ?").bind(newStatus, orderId).run();
-                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return jsonResponse({ success: true }, 200, corsHeaders);
             }
 
             if (path.match(/^\/api\/v1\/users\/([^/]+)\/verify$/) && request.method === "PATCH") {
                 const userId = path.split("/")[4];
-                await env.DB.prepare("UPDATE user SET verification_status = 'verified' WHERE id = ?").bind(userId).run();
+                await env.DB.prepare("UPDATE user SET verification_status = 'verified', rejection_reason = NULL WHERE id = ?").bind(userId).run();
 
                 // Fetch user to send email
-                const user = await env.DB.prepare("SELECT * FROM user WHERE id = ?").bind(userId).first();
+                const user = await env.DB.prepare("SELECT email, full_name, inpe_number FROM user WHERE id = ?").bind(userId).first();
                 if (user && user.email) {
                     await sendEmail(env, {
                         to: user.email,
@@ -491,6 +698,123 @@ export default {
                 }
 
                 return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path.match(/^\/api\/v1\/users\/([^/]+)\/reject$/) && request.method === "PATCH") {
+                const userId = path.split("/")[4];
+                const { reason } = await request.json();
+                await env.DB.prepare("UPDATE user SET verification_status = 'rejected', rejection_reason = ? WHERE id = ?").bind(reason, userId).run();
+
+                // Fetch user to send email
+                const user = await env.DB.prepare("SELECT email, full_name FROM user WHERE id = ?").bind(userId).first();
+                if (user && user.email) {
+                    await sendEmail(env, {
+                        to: user.email,
+                        subject: "Information concernant votre compte MediUnit ⚠️",
+                        html: `
+                            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 20px;">
+                                <h1 style="color: #d32f2f;">Action Requise</h1>
+                                <p>Bonjour ${user.full_name || 'Docteur'},</p>
+                                <p>Nous avons examiné votre demande d'accès professionnel. Malheureusement, nous ne pouvons pas l'approuver en l'état pour la raison suivante :</p>
+                                <div style="background-color: #fce4e4; padding: 15px; border-radius: 8px; color: #c62828; margin: 20px 0;">
+                                    <strong>Motif :</strong> ${reason}
+                                </div>
+                                <p>Vous pouvez mettre à jour vos informations ou soumettre une nouvelle licence depuis votre tableau de bord.</p>
+                                <div style="text-align: center; margin: 30px 0;">
+                                    <a href="https://mediunit.ma/dashboard" style="background-color: #1e5999; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Accéder à mon tableau de bord</a>
+                                </div>
+                                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+                                <p style="font-size: 12px; color: #666;">L'équipe MediUnit</p>
+                            </div>
+                        `
+                    });
+                }
+
+                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/users/verify-upload" && request.method === "POST") {
+                const formData = await request.formData();
+                const file = formData.get("file");
+                if (!file || !(file instanceof File)) {
+                    return new Response(JSON.stringify({ error: "No file uploaded" }), { status: 400, headers: corsHeaders });
+                }
+
+                const fileName = `licenses/${authUser.sub}_${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+                await env.STORAGE.put(fileName, await file.arrayBuffer(), {
+                    httpMetadata: { contentType: file.type }
+                });
+
+                const licenseUrl = `/api/v1/users/license/${fileName}`;
+                await env.DB.prepare("UPDATE user SET verification_license_url = ?, verification_status = 'pending' WHERE id = ?").bind(licenseUrl, authUser.sub).run();
+
+                return new Response(JSON.stringify({ success: true, url: licenseUrl }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path.startsWith("/api/v1/users/license/") && request.method === "GET") {
+                const fileName = path.replace("/api/v1/users/license/", "");
+
+                // Enforce: only the owner (userId prefix) or an admin can download a verification license.
+                const ownerUserId = fileName.split('-')[0];
+                if (!authUser) {
+                    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+                }
+                const isOwner = ownerUserId && authUser.sub === ownerUserId;
+                const isAdmin = authUser.role === 'admin';
+                if (!isOwner && !isAdmin) {
+                    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+                }
+
+                const object = await env.STORAGE.get(fileName);
+
+                if (!object) return new Response("Not Found", { status: 404, headers: corsHeaders });
+
+                const headers = new Headers();
+                object.writeHttpMetadata(headers);
+                headers.set("Access-Control-Allow-Origin", corsOrigin);
+                headers.set("Content-Disposition", "inline");
+
+                return new Response(object.body, { headers });
+            }
+
+            if (path === "/api/v1/auth/profile" && request.method === "GET") {
+                const user = await env.DB.prepare("SELECT id, email, full_name, clinic_name, inpe_number, specialty, city, verification_status, rejection_reason, created_at FROM user WHERE id = ?").bind(authUser.sub).first();
+                return new Response(JSON.stringify(user), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/auth/profile" && request.method === "PATCH") {
+                const body = await request.json();
+                await env.DB.prepare(`
+                    UPDATE user 
+                    SET full_name = ?, clinic_name = ?, specialty = ?, city = ?, inpe_number = ?
+                    WHERE id = ?
+                `).bind(
+                    body.full_name, body.clinic_name, body.specialty, body.city, body.inpe_number, authUser.sub
+                ).run();
+                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            // --- SETTINGS (GLOBAL CONFIG) ---
+            if (path === "/api/v1/admin/settings" && request.method === "GET") {
+                const { results } = await env.DB.prepare("SELECT key, value, updated_at FROM settings").all();
+                return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/admin/settings" && request.method === "PATCH") {
+                const body = await request.json(); // { updates: [{key, value}, ...] }
+                const { updates } = body;
+                for (const upd of updates) {
+                    await env.DB.prepare("UPDATE settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?").bind(upd.value, upd.key).run();
+                }
+                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path === "/api/v1/public/settings" && request.method === "GET") {
+                // Return only specific keys for public use
+                const publicKeys = ['whatsapp_number', 'support_email', 'shipping_standard', 'shipping_free_threshold', 'vat_rate', 'banner_text'];
+                const { results } = await env.DB.prepare(`SELECT key, value FROM settings WHERE key IN (${publicKeys.map(k => `'${k}'`).join(',')})`).all();
+                const settingsMap = results.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+                return new Response(JSON.stringify(settingsMap), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
             // --- PRODUCT CRUD ---
@@ -528,6 +852,11 @@ export default {
 
 
             if (path === "/api/v1/auth/login" && request.method === "POST") {
+                const ip = request.headers.get("CF-Connecting-IP") || "local";
+                if (await isRateLimited(env, ip, 10, 60, "login")) {
+                    return jsonResponse({ error: "Too many login attempts. Please try again later." }, 429, corsHeaders);
+                }
+
                 // Support both JSON and application/x-www-form-urlencoded
                 let username, password;
                 const contentType = request.headers.get('Content-Type') || '';
@@ -543,16 +872,21 @@ export default {
                 }
 
                 if (!username || !password) {
-                    return new Response(JSON.stringify({ error: "Missing credentials" }), { status: 400, headers: corsHeaders });
+                    return jsonResponse({ error: "Missing credentials" }, 400, corsHeaders);
                 }
 
                 const hashedPassword = await hashPassword(password, env);
-                const user = await env.DB.prepare("SELECT * FROM user WHERE email = ? AND hashed_password = ?").bind(username, hashedPassword).first();
-                if (!user) return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
+                const user = await env.DB.prepare(`
+                    SELECT id, email, full_name, clinic_name, specialty, inpe_number, city,
+                           verification_status, role, rejection_reason, created_at
+                    FROM user
+                    WHERE email = ? AND hashed_password = ?
+                `).bind(username, hashedPassword).first();
+                if (!user) return jsonResponse({ error: "Invalid credentials" }, 401, corsHeaders);
 
                 // Sign a real JWT valid for 24 hours
                 if (!env.JWT_SECRET) {
-                    return new Response(JSON.stringify({ error: "Server misconfiguration" }), { status: 500, headers: corsHeaders });
+                    return jsonResponse({ error: "Server misconfiguration" }, 500, corsHeaders);
                 }
                 const token = await signJWT({
                     sub: user.id,
@@ -561,14 +895,21 @@ export default {
                     exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
                 }, env.JWT_SECRET);
 
-                return new Response(JSON.stringify({ token, user }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return jsonResponse({ token, user }, 200, corsHeaders);
             }
 
             if (path.startsWith("/api/v1/brands/") && request.method === "PUT") {
                 const brandId = path.split("/")[4];
                 const body = await request.json();
                 await env.DB.prepare("UPDATE brand SET name = ?, logo_url = ?, manufacturer = ?, notes = ?, ce_certificate_url = ? WHERE id = ?")
-                    .bind(body.name, body.logo_url, body.manufacturer, body.notes, body.ce_certificate_url, brandId).run();
+                    .bind(body.name, body.logo_url, body.manufacturer, body.notes, body.ce_certificate_url, brandId)
+                    .run();
+                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            }
+
+            if (path.startsWith("/api/v1/brands/") && request.method === "DELETE") {
+                const brandId = path.split("/")[4];
+                await env.DB.prepare("DELETE FROM brand WHERE id = ?").bind(brandId).run();
                 return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
@@ -578,53 +919,80 @@ export default {
                     return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: corsHeaders });
                 }
                 const body = await request.json();
+
+                // --- VALIDATION ---
+                if (!body.email || !body.password || !body.full_name) {
+                    return new Response(JSON.stringify({ error: "Email, nom complet et mot de passe sont requis" }), { status: 400, headers: corsHeaders });
+                }
+                if (!body.email.includes('@')) {
+                    return new Response(JSON.stringify({ error: "Email invalide" }), { status: 400, headers: corsHeaders });
+                }
+
+                // Check if email exists
+                const existingUser = await env.DB.prepare("SELECT id FROM user WHERE email = ?").bind(body.email).first();
+                if (existingUser) {
+                    return new Response(JSON.stringify({ error: "Cet email est déjà utilisé" }), { status: 409, headers: corsHeaders });
+                }
+
                 const id = crypto.randomUUID();
 
                 // Store user with 'pending' status
                 const hashedPassword = await hashPassword(body.password, env);
-                await env.DB.prepare(`
-                    INSERT INTO user (id, email, hashed_password, full_name, clinic_name, specialty, inpe_number, city, verification_status, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-                `).bind(
-                    id, body.email, hashedPassword, body.full_name || '',
-                    body.clinic_name || '', body.specialty || '',
-                    body.inpe_number || '', body.city || 'Casablanca'
-                ).run();
+                try {
+                    await env.DB.prepare(`
+                        INSERT INTO user (id, email, hashed_password, full_name, clinic_name, specialty, inpe_number, city, verification_status, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+                    `).bind(
+                        id, body.email, hashedPassword, body.full_name || '',
+                        body.clinic_name || '', body.specialty || '',
+                        body.inpe_number || '', body.city || 'Casablanca'
+                    ).run();
+                } catch (dbError) {
+                    console.error("Database error during registration:", dbError);
+                    return new Response(JSON.stringify({ error: "Erreur lors de la création du compte" }), { status: 500, headers: corsHeaders });
+                }
 
-                // Send Welcome/Confirmation Email to User
-                await sendEmail(env, {
-                    to: body.email,
-                    subject: "Demande d'accès MediUnit - En cours de vérification",
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 20px;">
-                            <h1 style="color: #1e5999;">Bienvenue sur MediUnit</h1>
-                            <p>Bonjour ${body.full_name || 'Docteur'},</p>
-                            <p>Nous avons bien reçu votre demande d'accès à la plateforme MediUnit.</p>
-                            <p>Notre équipe de conformité vérifie actuellement vos informations professionnelles (INPE: ${body.inpe_number}).</p>
-                            <p><strong>Vous recevrez un e-mail dès que votre compte sera activé (généralement sous 24h).</strong></p>
-                            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                            <p style="font-size: 12px; color: #666;">MediUnit Morocco - Clinical B2B Sourcing</p>
-                        </div>
-                    `
-                });
+                // Send Emails (Non-blocking but wrapped in try/catch)
+                try {
+                    // Send Welcome/Confirmation Email to User
+                    await sendEmail(env, {
+                        to: body.email,
+                        subject: "Demande d'accès MediUnit - En cours de vérification",
+                        html: `
+                            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 20px;">
+                                <h1 style="color: #1e5999;">Bienvenue sur MediUnit</h1>
+                                <p>Bonjour ${body.full_name || 'Docteur'},</p>
+                                <p>Nous avons bien reçu votre demande d'accès à la plateforme MediUnit.</p>
+                                <p>Notre équipe de conformité vérifie actuellement vos informations professionnelles (INPE: ${body.inpe_number || 'Non fourni'}).</p>
+                                <p><strong>Vous recevrez un e-mail dès que votre compte sera activé (généralement sous 24h).</strong></p>
+                                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+                                <p style="font-size: 12px; color: #666;">MediUnit Morocco - Clinical B2B Sourcing</p>
+                            </div>
+                        `
+                    });
 
-                // Send Alert to Admin
-                await sendEmail(env, {
-                    to: "abdel@mediunit.ma",
-                    subject: "Nouvelle Demande d'Accès B2B - MediUnit",
-                    html: `
-                        <h1>Nouvelle inscription à vérifier</h1>
-                        <ul>
-                            <li><strong>Nom:</strong> ${body.full_name}</li>
-                            <li><strong>Email:</strong> ${body.email}</li>
-                            <li><strong>Clinique:</strong> ${body.clinic_name}</li>
-                            <li><strong>Spécialité:</strong> ${body.specialty}</li>
-                            <li><strong>INPE:</strong> ${body.inpe_number}</li>
-                            <li><strong>Ville:</strong> ${body.city}</li>
-                        </ul>
-                        <p><a href="https://mediunit.ma/admin">Accéder au panel admin pour valider</a></p>
-                    `
-                });
+                    // Send Alert to Admin
+                    const adminEmail = env.ADMIN_EMAIL || "abdel@mediunit.ma";
+                    await sendEmail(env, {
+                        to: adminEmail,
+                        subject: "Nouvelle Demande d'Accès B2B - MediUnit",
+                        html: `
+                            <h1>Nouvelle inscription à vérifier</h1>
+                            <ul>
+                                <li><strong>Nom:</strong> ${body.full_name}</li>
+                                <li><strong>Email:</strong> ${body.email}</li>
+                                <li><strong>Clinique:</strong> ${body.clinic_name || 'Non spécifié'}</li>
+                                <li><strong>Spécialité:</strong> ${body.specialty || 'Non spécifié'}</li>
+                                <li><strong>INPE:</strong> ${body.inpe_number || 'Non fourni'}</li>
+                                <li><strong>Ville:</strong> ${body.city || 'Casablanca'}</li>
+                            </ul>
+                            <p><a href="https://mediunit.ma/admin">Accéder au panel admin pour valider</a></p>
+                        `
+                    });
+                } catch (emailError) {
+                    console.error("Email delivery failed during registration:", emailError);
+                    // We don't return an error to the user here because the account was created in the DB
+                }
 
                 return new Response(JSON.stringify({ success: true, id }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
@@ -666,13 +1034,13 @@ export default {
                 const itemsWithPrice = [];
 
                 for (const item of body.items) {
-                    const product = await env.DB.prepare("SELECT id, name, base_unit_price, stock FROM product WHERE id = ?").bind(item.product_id).first();
+                    const product = await env.DB.prepare("SELECT id, name, base_unit_price, stock_quantity FROM product WHERE id = ?").bind(item.product_id).first();
 
                     if (!product) {
                         return new Response(JSON.stringify({ error: `Produit introuvable: ${item.product_id}` }), { status: 400, headers: corsHeaders });
                     }
-                    if (item.quantity > (product.stock || 0)) {
-                        return new Response(JSON.stringify({ error: `Stock insuffisant pour ${product.name}. Disponible: ${product.stock || 0}` }), { status: 400, headers: corsHeaders });
+                    if (item.quantity > (product.stock_quantity || 0)) {
+                        return new Response(JSON.stringify({ error: `Stock insuffisant pour ${product.name}. Disponible: ${product.stock_quantity || 0}` }), { status: 400, headers: corsHeaders });
                     }
 
                     const priceResult = product.base_unit_price;
@@ -685,12 +1053,15 @@ export default {
                     return new Response(JSON.stringify({ error: "Le panier est vide." }), { status: 400, headers: corsHeaders });
                 }
 
+                const vatSetting = await env.DB.prepare("SELECT value FROM settings WHERE key = 'vat_rate'").first();
+                const vatRate = vatSetting ? parseFloat(vatSetting.value) / 100 : 0.20;
+
                 let total = subtotal;
                 if (itemCount >= 50) total = subtotal * 0.8;
                 else if (itemCount >= 10) total = subtotal * 0.9;
 
-                // Add VAT 20%
-                total = total * 1.20;
+                // Add VAT from settings
+                total = total * (1 + vatRate);
 
                 // 2. Create Address and get ID
                 const shipping = body.shipping_details || {};
@@ -698,37 +1069,61 @@ export default {
                     INSERT INTO address (first_name, last_name, phone, street_address, city, zip_code) 
                     VALUES (?, ?, ?, ?, ?, ?) RETURNING id
                 `).bind(
-                    shipping.first_name || body.first_name,
-                    shipping.last_name || body.last_name,
-                    shipping.phone || body.phone,
-                    shipping.address || body.address,
+                    shipping.first_name || body.first_name || authUser.name || '',
+                    shipping.last_name || body.last_name || '',
+                    shipping.phone || body.phone || '',
+                    shipping.address || body.address || '',
                     shipping.city || body.city || 'Casablanca',
                     shipping.zip_code || body.zip_code || '20000'
                 ).first();
 
                 const addrId = addrResult.id;
 
-                // 3. Create Order and get ID
-                const orderResult = await env.DB.prepare(`
-                    INSERT INTO "order" (total_amount, status, shipping_address_id, created_at) 
-                    VALUES (?, 'pending', ?, datetime('now')) RETURNING id
-                `).bind(total, addrId).first();
+                // 3. Prepare Batch Operations for Transactional Integrity
+                const batchQueries = [];
 
-                const orderId = orderResult.id;
+                // Create Order Query
+                batchQueries.push(env.DB.prepare(`
+                    INSERT INTO "order" (total_amount, status, shipping_address_id, user_id, created_at) 
+                    VALUES (?, 'pending', ?, ?, datetime('now'))
+                `).bind(total, addrId, authUser.sub));
 
-                // 4. Create Order Items and update stock
+                // 4. Items and Stock Updates
                 let itemsListHtml = "<ul>";
                 for (const item of itemsWithPrice) {
-                    await env.DB.prepare(`
+                    // Note: We need the order ID for order_items. 
+                    // D1 batch() doesn't easily support RETURNING id for subsequent queries in same batch yet
+                    // So we do the order FIRST then the items in a batch, or use a workaround.
+                    // Actually, for D1, we can use a transaction-like approach with batch if queries are independent.
+                    // But order_item depends on order_id.
+                }
+
+                // REVISED ATOMIC APPROACH:
+                // Since D1 batch is for multiple statements, and we need the ID, 
+                // we'll use the ID from the first statement if possible or 
+                // perform the order creation first, then batch the items + stock updates.
+
+                const orderInsert = await env.DB.prepare(`
+                    INSERT INTO "order" (total_amount, status, shipping_address_id, user_id, created_at) 
+                    VALUES (?, 'pending', ?, ?, datetime('now')) RETURNING id
+                `).bind(total, addrId, authUser.sub).first();
+
+                const orderId = orderInsert.id;
+
+                const itemAndStockQueries = [];
+                for (const item of itemsWithPrice) {
+                    itemAndStockQueries.push(env.DB.prepare(`
                         INSERT INTO order_item (order_id, product_id, quantity, price_per_unit_at_purchase, selected_variant) 
                         VALUES (?, ?, ?, ?, ?)
-                    `).bind(orderId, item.product_id, item.quantity, item.price, item.variant || '').run();
+                    `).bind(orderId, item.product_id, item.quantity, item.price, item.selected_variant || ''));
 
-                    // Deduct stock
-                    await env.DB.prepare("UPDATE product SET stock_quantity = stock_quantity - ? WHERE id = ?").bind(item.quantity, item.product_id).run();
+                    itemAndStockQueries.push(env.DB.prepare("UPDATE product SET stock_quantity = stock_quantity - ? WHERE id = ?")
+                        .bind(item.quantity, item.product_id));
 
                     itemsListHtml += `<li>${item.name} (x${item.quantity}) - MAD ${item.price.toFixed(2)}</li>`;
                 }
+
+                await env.DB.batch(itemAndStockQueries);
                 itemsListHtml += "</ul>";
 
                 // Send Emails
@@ -760,64 +1155,68 @@ export default {
                     html: `< h1 > Nouvelle Commande de ${shipping.first_name} ${shipping.last_name}</h1 ><p>Total: MAD ${total.toFixed(2)}</p><p>Clinique: ${shipping.clinic_name || 'N/A'}</p><p>Ville: ${shipping.city}</p>`
                 });
 
-                return new Response(JSON.stringify({ success: true, id: orderId, total }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return jsonResponse({ success: true, id: orderId, total }, 200, corsHeaders);
             }
 
             if (path === "/api/v1/dashboard/" && request.method === "GET") {
                 // Return user-specific recent orders if authed, else admin summary
-                const authHeader = request.headers.get("Authorization");
                 let recent_orders = [];
                 let analytics = { total_spent: '0.00', last_order_date: null };
 
-                if (authHeader && authHeader.startsWith("Bearer ") && env.JWT_SECRET) {
-                    const tkn = authHeader.split(" ")[1];
-                    const authedUser = await verifyJWT(tkn, env.JWT_SECRET);
-                    if (authedUser) {
-                        const { results } = await env.DB.prepare(
-                            "SELECT * FROM \"order\" WHERE user_id = ? ORDER BY created_at DESC LIMIT 10"
-                        ).bind(authedUser.sub).all();
-                        recent_orders = results;
-                        const agg = await env.DB.prepare(
-                            "SELECT SUM(total_amount) as total, MAX(created_at) as last FROM \"order\" WHERE user_id = ?"
-                        ).bind(authedUser.sub).first();
-                        analytics = { total_spent: (agg?.total || 0).toFixed(2), last_order_date: agg?.last || null };
-                    }
+                if (authUser) {
+                    const { results } = await env.DB.prepare(
+                        "SELECT * FROM \"order\" WHERE user_id = ? ORDER BY created_at DESC LIMIT 10"
+                    ).bind(authUser.sub).all();
+                    recent_orders = results;
+                    const agg = await env.DB.prepare(
+                        "SELECT SUM(total_amount) as total, MAX(created_at) as last FROM \"order\" WHERE user_id = ?"
+                    ).bind(authUser.sub).first();
+                    analytics = { total_spent: (agg?.total || 0).toFixed(2), last_order_date: agg?.last || null };
                 }
 
                 const stats = await env.DB.prepare("SELECT COUNT(*) as count, SUM(total_amount) as total FROM \"order\"").first();
-                return new Response(JSON.stringify({ recent_orders, analytics, stats }), {
-                    headers: { "Content-Type": "application/json", ...corsHeaders }
-                });
+                return jsonResponse({ recent_orders, analytics, stats }, 200, corsHeaders);
+            }
+
+            if (path === "/api/v1/dashboard/admin/summary" && request.method === "GET") {
+                const stats = await env.DB.prepare("SELECT COUNT(*) as count, SUM(total_amount) as total FROM \"order\"").first();
+                const byStatus = await env.DB.prepare("SELECT status, COUNT(*) as count FROM \"order\" GROUP BY status").all();
+                const pendingVerifications = await env.DB.prepare("SELECT COUNT(*) as count FROM user WHERE verification_status = 'pending'").first();
+                const lowStock = await env.DB.prepare("SELECT COUNT(*) as count FROM product WHERE stock_quantity <= 5").first();
+                const recentOrders = await env.DB.prepare(`
+                    SELECT o.*, u.email as user_email, u.clinic_name as user_clinic_name
+                    FROM "order" o
+                    LEFT JOIN user u ON o.user_id = u.id
+                    ORDER BY o.created_at DESC
+                    LIMIT 5
+                `).all();
+
+                return jsonResponse({
+                    stats,
+                    by_status: byStatus.results || [],
+                    pending_verifications: pendingVerifications?.count || 0,
+                    low_stock_count: lowStock?.count || 0,
+                    recent_orders: recentOrders.results || []
+                }, 200, corsHeaders);
             }
 
             // Logout (stateless JWT — just acknowledge)
             if (path === "/api/v1/auth/logout" && request.method === "POST") {
-                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return jsonResponse({ success: true }, 200, corsHeaders);
             }
 
-            // Compliance documents (stub — returns empty list until table is created)
-            if (path === "/api/v1/dashboard/compliance" && request.method === "GET") {
-                return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json", ...corsHeaders } });
-            }
-
-            // License upload (stub — returns success for now)
-            if (path === "/api/v1/users/verify-upload" && request.method === "POST") {
-                return new Response(JSON.stringify({ success: true, message: "License received, pending manual review" }), {
-                    headers: { "Content-Type": "application/json", ...corsHeaders }
-                });
-            }
-
-            // Compliance pack download (stub)
-            if (path.match(/\/api\/v1\/compliance\/pack\/([^/]+)/) && request.method === "GET") {
-                return new Response(JSON.stringify({ error: "Compliance pack not yet available for this order" }), {
-                    status: 404, headers: { "Content-Type": "application/json", ...corsHeaders }
-                });
-            }
 
             if (path.match(/\/api\/v1\/orders\/([^/]+)\/invoice/) && request.method === "GET") {
                 const orderId = path.split("/")[4];
                 const order = await env.DB.prepare("SELECT * FROM \"order\" WHERE id = ?").bind(orderId).first();
                 if (!order) return new Response("Not Found", { status: 404, headers: corsHeaders });
+
+                const invoiceAuthUser = await getAuthUser(request, env, corsHeaders);
+                const isOwner = invoiceAuthUser && order.user_id && invoiceAuthUser.sub === order.user_id;
+                const isAdmin = invoiceAuthUser && invoiceAuthUser.role === 'admin';
+                if (!isOwner && !isAdmin) {
+                    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+                }
 
                 const items = await env.DB.prepare("SELECT oi.*, p.name FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = ?").bind(orderId).all();
 
@@ -873,7 +1272,7 @@ export default {
             if (path.match(/^\/api\/v1\/products\/([^/]+)$/) && request.method === "DELETE") {
                 const productId = path.split("/")[4];
                 await env.DB.prepare("DELETE FROM product WHERE id = ?").bind(productId).run();
-                return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+                return jsonResponse({ success: true }, 200, corsHeaders);
             }
             // --------------------
 

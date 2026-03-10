@@ -16,6 +16,7 @@ import {
     Info,
     Activity
 } from 'lucide-react';
+import { fetchProducts, fetchProductBySlug, resolveImageUrl } from '@/app/lib/api';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useAuthStore } from '@/app/store/useAuthStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
@@ -135,7 +136,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
             price: product.base_unit_price * (1 - getDiscountInfo(quantity).discount) || 0,
             basePrice: product.base_unit_price,
             quantity: quantity,
-            image: product.image_url || '/images/Pencil Points different colours.jpeg'
+            image: resolveImageUrl(product.image_url) || '/images/Pencil Points different colours.jpeg'
         });
         openCart();
         toast.success(`${quantity}x ${displayName} (${product.packaging_type || 'Unité'}) ${t('ajouté(s) au panier !', 'added to cart!')}`);
@@ -214,7 +215,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                         <div className="bg-white rounded-[3rem] p-8 shadow-2xl shadow-medical-blue/5 overflow-hidden ring-1 ring-slate-gray-light/10 relative aspect-square group flex items-center justify-center">
                             {product.image_url ? (
                                 <Image
-                                    src={product.image_url}
+                                    src={resolveImageUrl(product.image_url)}
                                     alt={product.name}
                                     fill
                                     sizes="(max-width: 1024px) 100vw, 50vw"
@@ -368,7 +369,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <a
-                                    href={product.ce_cert_url || '#'}
+                                    href={product.ce_cert_url || product.brand_entity?.ce_certificate_url || '#'}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => {
@@ -409,7 +410,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                         <h3 className="text-2xl font-black text-slate-gray-dark mb-8 tracking-tight">{t('Description Clinique', 'Clinical Description')}</h3>
                         <div className="text-slate-gray leading-relaxed text-lg font-medium mb-12 clinical-description prose prose-slate max-w-none">
                             <div dangerouslySetInnerHTML={{
-                                __html: (translateProduct(product.description || '', product.description_en)).replace(/<table[\s\S]*?<\/table>/gi, '')
+                                __html: (translateProduct(product.description || '', product.description_en))
                             }} />
                         </div>
 
@@ -502,7 +503,7 @@ export default function ProductClient({ slug, initialData, relatedProducts = [] 
                                     <div className="relative w-full aspect-square mb-6 bg-clinic-white rounded-2xl flex items-center justify-center overflow-hidden">
                                         {p.image_url ? (
                                             <Image
-                                                src={p.image_url}
+                                                src={resolveImageUrl(p.image_url)}
                                                 alt={p.name}
                                                 fill
                                                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"

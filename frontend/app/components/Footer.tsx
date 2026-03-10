@@ -1,11 +1,22 @@
 'use client';
 
-import { ShieldCheck, Activity, Globe } from 'lucide-react';
+import { ShieldCheck, Activity, Globe, MessageSquare } from 'lucide-react';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import Logo from './Logo';
+import { useEffect, useState } from 'react';
+import { fetchPublicSettings } from '@/app/lib/api';
 
 export default function Footer() {
     const { t } = useLanguageStore();
+    const [settings, setSettings] = useState<any>(null);
+
+    useEffect(() => {
+        fetchPublicSettings().then(setSettings).catch(console.error);
+    }, []);
+
+    const supportEmail = settings?.support_email || 'abdel@mediunit.ma';
+    const whatsappNumber = settings?.whatsapp_number || '+212600000000';
+
     return (
         <footer className="bg-white border-t border-slate-gray-light/10 pt-16 pb-24 md:pb-16 mt-24">
             <div className="max-w-7xl mx-auto px-4">
@@ -35,9 +46,10 @@ export default function Footer() {
                             {t('Contact & Support', 'Contact & Support')}
                         </h4>
                         <p className="text-xs text-slate-gray">
-                            Email: <a href="mailto:abdel@mediunit.ma" className="text-medical-blue hover:underline">abdel@mediunit.ma</a><br />
-                            Zone Industrielle Sapino, Nouaceur<br />
-                            Casablanca, Maroc.
+                            Email: <a href={`mailto:${supportEmail}`} className="text-medical-blue hover:underline">{supportEmail}</a><br />
+                            WhatsApp: <a href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-medical-blue hover:underline flex items-center gap-1 mt-1">
+                                <MessageSquare className="w-3 h-3" /> {whatsappNumber}
+                            </a>
                         </p>
                     </div>
                 </div>

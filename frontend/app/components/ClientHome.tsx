@@ -10,6 +10,7 @@ import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import SupportSection from './SupportSection';
 import Fuse from 'fuse.js';
+import { resolveImageUrl } from '@/app/lib/api';
 
 interface ClientHomeProps {
     initialProducts: any[];
@@ -74,7 +75,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
             price: product.base_unit_price || 0,
             basePrice: product.base_unit_price || 0,
             quantity: 1,
-            image: product.image_url || '/images/Pencil Points different colours.jpeg'
+            image: resolveImageUrl(product.image_url) || '/images/Pencil Points different colours.jpeg'
         });
         openCart();
     };
@@ -184,7 +185,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-slate-gray-light/10 rounded-xl flex items-center justify-center overflow-hidden relative">
                                                     {product.image_url ? (
-                                                        <Image src={product.image_url} alt={product.name} fill sizes="40px" className="object-cover" />
+                                                        <Image src={resolveImageUrl(product.image_url)} alt={product.name} fill sizes="40px" className="object-cover" />
                                                     ) : (
                                                         <Package className="w-5 h-5 text-slate-gray-light" />
                                                     )}
@@ -258,7 +259,7 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
                                     <div className="w-full aspect-square bg-slate-gray-light/5 rounded-[2rem] mb-6 group-hover:bg-medical-blue-light/30 transition-all duration-500 overflow-hidden relative border border-slate-gray-light/5">
                                         {product.image_url && product.image_url !== "/" ? (
                                             <Image
-                                                src={product.image_url}
+                                                src={resolveImageUrl(product.image_url)}
                                                 alt={product.name}
                                                 fill
                                                 sizes="(max-width: 768px) 50vw, 25vw"
