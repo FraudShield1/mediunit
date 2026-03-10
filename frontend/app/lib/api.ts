@@ -1,8 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
+const WORKER_URL = 'https://mediunit-backend.a-naouri.workers.dev';
 
 export function resolveImageUrl(path: string | undefined | null) {
     if (!path || path === '/') return '';
     if (path.startsWith('http')) return path;
+    if (path.startsWith('/api/v1/images/')) {
+        return `${WORKER_URL}${path}`;
+    }
     if (path.startsWith('/api/v1/')) {
         return `${API_URL.replace('/api/v1', '')}${path}`;
     }
