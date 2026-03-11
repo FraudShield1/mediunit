@@ -1,0 +1,60 @@
+
+> mediunit-frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 14.1.0
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+Critical: Failed to fetch static params for products! TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async globalThis.fetch (/Users/naouri/MediUnit/frontend/.next/server/chunks/638.js:1:36426)
+    at async Object.o [as generateStaticParams] (/Users/naouri/MediUnit/frontend/.next/server/app/[lang]/products/[slug]/page.js:42:1418)
+    at async buildParams (/Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1025:40)
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1042:33
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1172:114
+    at async Span.traceAsyncFn (/Users/naouri/MediUnit/frontend/node_modules/next/dist/trace/trace.js:151:20) {
+  [cause]: Error: getaddrinfo ENOTFOUND api.mediunit.ma
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+      at GetAddrInfoReqWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'api.mediunit.ma'
+  }
+}
+Critical: Failed to fetch static params for products! TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async globalThis.fetch (/Users/naouri/MediUnit/frontend/.next/server/chunks/638.js:1:36426)
+    at async Object.o [as generateStaticParams] (/Users/naouri/MediUnit/frontend/.next/server/app/[lang]/products/[slug]/page.js:42:1418)
+    at async buildParams (/Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1025:40)
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1042:33
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/utils.js:1172:114
+    at async Span.traceAsyncFn (/Users/naouri/MediUnit/frontend/node_modules/next/dist/trace/trace.js:151:20) {
+  [cause]: Error: getaddrinfo ENOTFOUND api.mediunit.ma
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+      at GetAddrInfoReqWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'api.mediunit.ma'
+  }
+}
+
+> Build error occurred
+Error: Page "/[lang]/products/[slug]" is missing "generateStaticParams()" so it cannot be used with "output: export" config.
+    at /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/index.js:1102:59
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Span.traceAsyncFn (/Users/naouri/MediUnit/frontend/node_modules/next/dist/trace/trace.js:151:20)
+    at async Promise.all (index 13)
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/index.js:981:17
+    at async Span.traceAsyncFn (/Users/naouri/MediUnit/frontend/node_modules/next/dist/trace/trace.js:151:20)
+    at async /Users/naouri/MediUnit/frontend/node_modules/next/dist/build/index.js:918:124
+    at async Span.traceAsyncFn (/Users/naouri/MediUnit/frontend/node_modules/next/dist/trace/trace.js:151:20)
+    at async build (/Users/naouri/MediUnit/frontend/node_modules/next/dist/build/index.js:374:9)
+    at async main (/Users/naouri/MediUnit/frontend/node_modules/next/dist/bin/next:155:5)

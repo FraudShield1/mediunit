@@ -1,0 +1,374 @@
+
+ ⛅️ wrangler 4.65.0 (update available 4.71.0)
+─────────────────────────────────────────────
+Resource location: remote 
+
+🌀 Executing on remote database mediunit_db (87f7686a-bba3-4b9a-9407-3d261e8ff224):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+🚣 Executed 1 command in 0.48ms
+[
+  {
+    "results": [
+      {
+        "id": 1,
+        "sku": "TMT-SPPK-2590",
+        "slug": "aiguille-de-rachianesthesie-pointe-crayon",
+        "name": "Aiguille De Rachianesthésie (Pointe Crayon) (Multi-Tailles)"
+      },
+      {
+        "id": 5,
+        "sku": "TMT-SPQ-1990",
+        "slug": "aiguille-de-ponction-lombaire",
+        "name": "Aiguille De Ponction Lombaire (Multi-Tailles)"
+      },
+      {
+        "id": 9,
+        "sku": "TMTSPQK2490",
+        "slug": "aiguille-spinale-biseau-quincke",
+        "name": "Aiguille Spinale (Biseau Quincke) (Multi-Tailles)"
+      },
+      {
+        "id": 16,
+        "sku": "RUS112480-000030",
+        "slug": "sonde-dintubation-avec-ballonnet",
+        "name": "Sonde D'intubation Avec Ballonnet (Multi-Tailles)"
+      },
+      {
+        "id": 23,
+        "sku": "RUS100380-000020",
+        "slug": "sonde-dintubation-sans-ballonnet",
+        "name": "Sonde D'intubation Sans Ballonnet (Multi-Tailles)"
+      },
+      {
+        "id": 30,
+        "sku": "RUS100380-000050",
+        "slug": "rus100380-000050-sonde-d'intubation-subglottiqu",
+        "name": "Sonde D'intubation Subglottique 5"
+      },
+      {
+        "id": 31,
+        "sku": "RUS104202-000035",
+        "slug": "sonde-dintubation-armee",
+        "name": "Sonde D'intubation Armée (Multi-Tailles)"
+      },
+      {
+        "id": 38,
+        "sku": "RUS116100-000410",
+        "slug": "rus116100-000410-kit-de-sonde-d'intubation-sele",
+        "name": "Kit De Sonde D'intubation Sélective Gauche Ch41"
+      },
+      {
+        "id": 41,
+        "sku": "RUS116100-000260",
+        "slug": "rus116100-000260-kit-de-sonde-d'intubation-sele",
+        "name": "Kit De Sonde D'intubation Sélective Gauche Ch26"
+      },
+      {
+        "id": 42,
+        "sku": "RUS116200-000390",
+        "slug": "rus116200-000390-kit-de-sonde-d'intubation-sele",
+        "name": "Kit De Sonde D'intubation Sélective Droite Ch39"
+      },
+      {
+        "id": 43,
+        "sku": "LMA135130",
+        "slug": "masque-larynge-fast-track",
+        "name": "Masque Laryngé Fast Track (Multi-Tailles)"
+      },
+      {
+        "id": 45,
+        "sku": "RUS124900-000001",
+        "slug": "canule-de-guedel",
+        "name": "Canule De Guedel (Multi-Tailles)"
+      },
+      {
+        "id": 54,
+        "sku": "RUS191014-000200",
+        "slug": "monture-de-catheter",
+        "name": "Monture De Cathéter (Multi-Tailles)"
+      },
+      {
+        "id": 57,
+        "sku": "RUS18402T",
+        "slug": "rus18402t-filtre-coude-combine-echangeur",
+        "name": "Filtre Coude Combiné Échangeur Anti-bactérien Humidificateur Droit/ventilation-humide"
+      },
+      {
+        "id": 59,
+        "sku": "CULCI1-042/05",
+        "slug": "culci1-042-05-laryngoscope-macintosh-–-culli",
+        "name": "Laryngoscope Macintosh – Cullinan | Intubation"
+      },
+      {
+        "id": 60,
+        "sku": "HUGVL4R432",
+        "slug": "laryngoscope-avec-lames-multi-tailles",
+        "name": "Laryngoscope Avec Lames – Cullinan (Multi-Tailles)"
+      },
+      {
+        "id": 63,
+        "sku": "TMT-EPIS18903",
+        "slug": "kit-peridural-egemen",
+        "name": "Kit Péridural Egemen"
+      },
+      {
+        "id": 500,
+        "sku": "RUS121415-000100",
+        "slug": "kit-tracheofix-sans-ballonnet",
+        "name": "Kit Tracheofix Sans Ballonnet (Multi-Tailles)"
+      },
+      {
+        "id": 502,
+        "sku": "RUS121420-000070",
+        "slug": "kit-tracheofix-avec-ballonnet",
+        "name": "Kit Tracheofix Avec Ballonnet (Multi-Tailles)"
+      },
+      {
+        "id": 505,
+        "sku": "COL051350",
+        "slug": "coloplast-conveen-etui-penien",
+        "name": "Coloplast Conveen Etui Penien (Multi-Tailles)"
+      },
+      {
+        "id": 508,
+        "sku": "COL142280",
+        "slug": "coloplast-poche-uro-2-pieces",
+        "name": "Coloplast Poche Uro 2 Pièces (Multi-Tailles)"
+      },
+      {
+        "id": 509,
+        "sku": "COL174800",
+        "slug": "col174800-coloplast-poche-uro-1-piece-en",
+        "name": "Coloplast Poche Uro 1 Piece Enfant Alterna Transp"
+      },
+      {
+        "id": 510,
+        "sku": "COL175210",
+        "slug": "col175210-coloplast-poche-uro-1-piece-al",
+        "name": "Coloplast Poche Uro 1 Pièce Alterna Free Blanc"
+      },
+      {
+        "id": 514,
+        "sku": "COL050080",
+        "slug": "coloplast-sonde-easicath-pediatrique",
+        "name": "Coloplast Sonde Easicath Pédiatrique (Multi-Tailles)"
+      },
+      {
+        "id": 516,
+        "sku": "COL053720",
+        "slug": "coloplast-sonde-easicath-femme",
+        "name": "Coloplast Sonde Easicath Femme (Multi-Tailles)"
+      },
+      {
+        "id": 517,
+        "sku": "COL053520",
+        "slug": "coloplast-sonde-easicath-homme",
+        "name": "Coloplast Sonde Easicath Homme (Multi-Tailles)"
+      },
+      {
+        "id": 522,
+        "sku": "COL284140",
+        "slug": "coloplast-sonde-intermittente-homme",
+        "name": "Coloplast Sonde Intermittente Homme (Multi-Tailles)"
+      },
+      {
+        "id": 523,
+        "sku": "COL285120",
+        "slug": "coloplast-sonde-intermittente-femme",
+        "name": "Coloplast Sonde Intermittente Femme (Multi-Tailles)"
+      },
+      {
+        "id": 526,
+        "sku": "COL287080",
+        "slug": "col287080-coloplast-sonde-pour-sondage-i",
+        "name": "Coloplast Sonde Pour Sondage Intermittent Pour Enfant Ch.8"
+      },
+      {
+        "id": 530,
+        "sku": "OTU-A",
+        "slug": "otu-a-systeme-dimagerie-pour-ureter",
+        "name": "Système D'imagerie Pour Urétéroscope"
+      },
+      {
+        "id": 531,
+        "sku": "OTU-C380RR",
+        "slug": "otu-c380rr-cystoscope-souple-usage-unique",
+        "name": "Cystoscope Souple Usage Unique Flexible Wiscope"
+      },
+      {
+        "id": 532,
+        "sku": "OTU-100RR",
+        "slug": "otu-100rr-ureteroscope-souple-a-usage-un",
+        "name": "Ureteroscope Souple À Usage Unique"
+      },
+      {
+        "id": 533,
+        "sku": "OTU-100SL",
+        "slug": "otu-100sl-ureteroscope-souple-usage-uniq",
+        "name": "Uréteroscope Souple Usage Unique Flexible Wiscope 7.5 Fr"
+      },
+      {
+        "id": 534,
+        "sku": "SW158511",
+        "slug": "lame-de-bistouri",
+        "name": "Lame De Bistouri (Multi-Tailles)"
+      },
+      {
+        "id": 536,
+        "sku": "GUIMTPC75",
+        "slug": "gants-de-chirurgie-en-latex-non-poudres",
+        "name": "Gants De Chirurgie En Latex Non Poudrés (Multi-Tailles)"
+      },
+      {
+        "id": 553,
+        "sku": "NEO176501",
+        "slug": "neo176501-seringue-luer-slip-de-1-ml-ave",
+        "name": "Seringue Luer Slip De 1 Ml Avec Aiguille De 27g"
+      },
+      {
+        "id": 554,
+        "sku": "NEO152080",
+        "slug": "gants-chirurgicaux-en-latex-steriles",
+        "name": "Gants Chirurgicaux En Latex Stériles (Multi-Tailles)"
+      },
+      {
+        "id": 558,
+        "sku": "NEO176550SLIP",
+        "slug": "seringue-luer-slip-3-pieces",
+        "name": "Seringue Luer Slip 3 Pièces (Multi-Tailles)"
+      },
+      {
+        "id": 559,
+        "sku": "NEO176501/29",
+        "slug": "neo176501-29-seringue-a-insuline-de-1-ml-av",
+        "name": "Seringue À Insuline De 1 Ml Avec Aiguille Fixe De 29g"
+      },
+      {
+        "id": 561,
+        "sku": "NE176520",
+        "slug": "ne176520-seringue-luer-slip---seringue-",
+        "name": "Seringue Luer Slip - Seringue En 3 Parties Sans Latex - 20ml"
+      },
+      {
+        "id": 562,
+        "sku": "NEO152100",
+        "slug": "gants-dexamen-non-steriles",
+        "name": "Gants D'examen Non Stériles (Multi-Tailles)"
+      },
+      {
+        "id": 564,
+        "sku": "NEO176550G",
+        "slug": "neo176550g-syringe-a-embout-de-catheter--",
+        "name": "Syringe À Embout De Cathéter - Seringue Sans Latex En 3 Parties - 50ml"
+      },
+      {
+        "id": 566,
+        "sku": "FIX254550",
+        "slug": "fix254550-pharmafix®-—-pansement-de-fixa",
+        "name": "Pharmafix® — Pansement De Fixation En Tissu Doux"
+      },
+      {
+        "id": 567,
+        "sku": "APRtF0UbCd",
+        "slug": "aprtf0ubcd-gants-dexamen-en-latex-steril",
+        "name": "Gants D'examen En Latex Stériles À Usage Unique Sans Poudre"
+      },
+      {
+        "id": 568,
+        "sku": "PHA-YESHAC",
+        "slug": "pharmaplast-pansements-espuma-ag",
+        "name": "Pharmaplast Pansements Espuma Ag (Multi-Tailles)"
+      },
+      {
+        "id": 569,
+        "sku": "GRE-ABRAKQ",
+        "slug": "speculum-vaginal-greatcare",
+        "name": "Spéculum Vaginal (Greatcare) (Multi-Tailles)"
+      },
+      {
+        "id": 570,
+        "sku": "GRE-Z2R5B6",
+        "slug": "speculum-nasal-greatcare",
+        "name": "Spéculum Nasal (Greatcare) (Multi-Tailles)"
+      },
+      {
+        "id": 571,
+        "sku": "GRE-CKFPVX",
+        "slug": "speculum-auriculaire-greatcare",
+        "name": "Spéculum Auriculaire (Greatcare) (Multi-Tailles)"
+      },
+      {
+        "id": 9999,
+        "sku": "KIT-SUTURE-001",
+        "slug": "kit-suture-standard",
+        "name": "Kit de Suture Standard (Complet)"
+      },
+      {
+        "id": 10000,
+        "sku": "KIT-DENT-001",
+        "slug": "kit-soin-dentaire-essentiel",
+        "name": "Kit de Soin Dentaire Essentiel"
+      },
+      {
+        "id": 10001,
+        "sku": "KIT-DERM-001",
+        "slug": "kit-excision-dermatologique",
+        "name": "Kit d'Excision Dermatologique"
+      },
+      {
+        "id": 10002,
+        "sku": "KIT-GEN-001",
+        "slug": "kit-consultation-generaliste",
+        "name": "Kit de Consultation Généraliste"
+      },
+      {
+        "id": 10003,
+        "sku": "KIT-GYN-001",
+        "slug": "kit-examen-gynecologique",
+        "name": "Kit d'Examen Gynécologique"
+      },
+      {
+        "id": 10004,
+        "sku": "KIT-URO-001",
+        "slug": "kit-sondage-urinaire",
+        "name": "Kit de Sondage Urinaire"
+      },
+      {
+        "id": 10005,
+        "sku": "KIT-URG-001",
+        "slug": "kit-premiers-secours-urgence",
+        "name": "Kit de Premiers Secours/Urgence"
+      },
+      {
+        "id": 10006,
+        "sku": "PAR-BLADE-11",
+        "slug": "lames-de-bistouri-steriles-paramount-n-11",
+        "name": "Lames de Bistouri Stériles Paramount (N° 11)"
+      },
+      {
+        "id": 10007,
+        "sku": "PAR-BLADE-15",
+        "slug": "lames-de-bistouri-steriles-paramount-n-15",
+        "name": "Lames de Bistouri Stériles Paramount (N° 15)"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "WEUR",
+      "served_by_colo": "LIS",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.4759
+      },
+      "duration": 0.4759,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 573440,
+      "rows_read": 57,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]
