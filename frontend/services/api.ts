@@ -75,7 +75,7 @@ export const ApiService = {
         getAll: () => fetchClient<any[]>('/products'),
         getBySlug: (slug: string) => fetchClient<any>(`/products/${slug}`),
         getKits: () => fetchClient<any[]>('/kits'),
-        getSettings: () => fetchClient<any>('/public/settings'),
+        getSettings: () => fetchClient<any>('/settings/public'),
     },
     Auth: {
         login: (credentials: any) => fetchClient<any>('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),

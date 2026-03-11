@@ -2,6 +2,9 @@ name = "mediunit-backend"
 compatibility_date = "2024-02-25"
 main = "src/index.js"
 
+[pages]
+build_output_dir = "frontend/out"
+
 [vars]
 ENVIRONMENT = "production"
 ADMIN_EMAIL = "abdel@mediunit.ma" # Email for receiving new registration alerts
