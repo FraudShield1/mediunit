@@ -38,4 +38,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/out --project-name=mediunit-frontend
+          command: pages deploy frontend/out --project-name=mediunit-frontend --branch=${{ github.ref_name }}
