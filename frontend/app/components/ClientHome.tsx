@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/app/components/LocalizedLink';
 import Image from 'next/image';
 import { Search, ShoppingCart, User, Package, ChevronRight, Activity, Plus, Globe, AlertCircle, X } from 'lucide-react';
 import EmptyState from './EmptyState';
@@ -10,7 +10,7 @@ import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import SupportSection from './SupportSection';
 import Fuse from 'fuse.js';
-import { resolveImageUrl } from '@/app/lib/api';
+import { resolveImageUrl, fetchProducts } from '@/app/lib/api';
 
 interface ClientHomeProps {
     initialProducts: any[];
@@ -41,14 +41,8 @@ export default function ClientHome({ initialProducts, initialCategories }: Clien
         setIsSearching(true);
         const timer = setTimeout(async () => {
             try {
-                // Fetch from the Edge API
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
-                const url = `${apiBase}/products?search=${encodeURIComponent(searchQuery)}`;
-                const res = await fetch(url, { cache: 'no-store' });
-                if (res.ok) {
-                    const data = await res.json();
-                    setSearchResults(data);
-                }
+                const data = await fetchProducts(undefined, searchQuery);
+                setSearchResults(data as any[]);
             } catch (error) {
                 console.error('Search debouncing error:', error);
             } finally {

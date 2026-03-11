@@ -1,31 +1,44 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
-const WORKER_URL = 'https://mediunit-backend.a-naouri.workers.dev';
+import { fetchClient, API_BASE_URL } from '../../services/api';
+
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || '';
 
 export function resolveImageUrl(path: string | undefined | null) {
     if (!path || path === '/') return '';
     if (path.startsWith('http')) return path;
+    
+    // Map local Next.js /images/ to the R2 API directly
+    if (path.startsWith('/images/')) {
+        path = `/api/v1${path}`;
+    }
+
     if (path.startsWith('/api/v1/images/')) {
-        return `${WORKER_URL}${path}`;
+        return WORKER_URL ? `${WORKER_URL}${path}` : path;
     }
     if (path.startsWith('/api/v1/')) {
-        return `${API_URL.replace('/api/v1', '')}${path}`;
+        const base = API_BASE_URL.replace('/api/v1', '');
+        return base ? `${base}${path}` : path;
     }
     return path;
 }
 
-// Helper to get token natively from localStorage (Zustand persists it here)
+// Token getter explicitly for headers directly needed by blob endpoints
 function getAuthToken() {
     if (typeof window === 'undefined') return null;
     try {
         const candidates = [
             localStorage.getItem('mediunit-auth'),
-            localStorage.getItem('auth-storage')
+            localStorage.getItem('auth-storage'),
+            localStorage.getItem('token')
         ].filter(Boolean) as string[];
 
         for (const storage of candidates) {
-            const parsed = JSON.parse(storage);
-            const token = parsed?.state?.token || parsed?.token || null;
-            if (token) return token;
+            try {
+                const parsed = JSON.parse(storage);
+                const token = parsed?.state?.token || parsed?.token || null;
+                if (token) return token;
+            } catch {
+                return storage;
+            }
         }
     } catch (e) { console.error('Error reading auth string', e); }
     return null;
@@ -36,18 +49,25 @@ function getAuthHeaders(): HeadersInit {
     return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+// --- Auth ---
 export async function login(email: string, password: string) {
     const params = new URLSearchParams();
     params.append('username', email);
     params.append('password', password);
-    const res = await fetch(`${API_URL}/auth/login`, {
+    
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params,
     });
-    if (!res.ok) throw new Error('Incorrect email or password');
+    
+    if (!res.ok) {
+        let msg = 'Incorrect email or password';
+        try { const d = await res.json(); if (d.error) msg = d.error; } catch(e){}
+        throw new Error(msg);
+    }
+    
     const data = await res.json();
-    // Set a session cookie so middleware can protect routes
     if (typeof document !== 'undefined' && data.token) {
         document.cookie = `mediunit_token=${data.token}; path=/; max-age=${24 * 60 * 60}; SameSite=Lax`;
     }
@@ -55,50 +75,55 @@ export async function login(email: string, password: string) {
 }
 
 export function logout() {
-    // JWT is stateless — just clear the client-side cookie
     if (typeof document !== 'undefined') {
         document.cookie = 'mediunit_token=; path=/; max-age=0';
     }
 }
 
 export async function register(userData: any) {
-    const res = await fetch(`${API_URL}/auth/register`, {
+    return fetchClient('/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
     });
-    if (!res.ok) throw new Error('Registration failed');
-    return res.json();
 }
 
+export async function requestPasswordReset(email: string, lang: string = 'fr') {
+    return fetchClient('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, lang })
+    });
+}
+
+export async function resetPassword(token: string, new_password: string) {
+    return fetchClient('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, new_password })
+    });
+}
+
+// --- Public ---
 export async function fetchCategories() {
-    const res = await fetch(`${API_URL}/categories`);
-    if (!res.ok) throw new Error('Failed to fetch categories');
-    return res.json();
+    return fetchClient('/categories');
 }
 
 export async function fetchProducts(categorySlug?: string, search?: string) {
-    let url = `${API_URL}/products`;
     const params = new URLSearchParams();
     if (categorySlug) params.append('category_slug', categorySlug);
     if (search) params.append('search', search);
 
-    if (params.toString()) {
-        url += `?${params.toString()}`;
-    }
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to fetch products');
-    return res.json();
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return fetchClient(`/products${qs}`);
 }
 
 export async function fetchProductBySlug(slug: string) {
-    const res = await fetch(`${API_URL}/products/${slug}`);
-    if (!res.ok) throw new Error('Failed to fetch product');
-    return res.json();
+    return fetchClient(`/products/${slug}`);
 }
 
-// Admin Exports
+export async function fetchPublicSettings() {
+    return fetchClient('/public/settings');
+}
+
+// --- Admin Orders ---
 export async function fetchAdminOrders(params?: { status?: string; q?: string; limit?: number; offset?: number }) {
     const usp = new URLSearchParams();
     if (params?.status) usp.append('status', params.status);
@@ -106,69 +131,70 @@ export async function fetchAdminOrders(params?: { status?: string; q?: string; l
     if (typeof params?.limit === 'number') usp.append('limit', String(params.limit));
     if (typeof params?.offset === 'number') usp.append('offset', String(params.offset));
 
-    const url = usp.toString() ? `${API_URL}/orders/admin/all?${usp.toString()}` : `${API_URL}/orders/admin/all`;
-    const res = await fetch(url, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch admin orders');
-    return res.json();
+    const qs = usp.toString() ? `?${usp.toString()}` : '';
+    return fetchClient(`/orders/admin/all${qs}`);
 }
 
 export async function fetchAdminOrderById(orderId: string | number) {
-    const res = await fetch(`${API_URL}/orders/admin/${orderId}`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch admin order detail');
-    return res.json();
-}
-
-export async function fetchAdminUsers() {
-    const res = await fetch(`${API_URL}/users/`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch admin users');
-    return res.json();
+    return fetchClient(`/orders/admin/${orderId}`);
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
-    const res = await fetch(`${API_URL}/orders/${orderId}/status?status=${status}`, {
-        method: 'PATCH',
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to update order status');
-    return res.json();
+    return fetchClient(`/orders/${orderId}/status?status=${status}`, { method: 'PATCH' });
 }
 
-// User Dashboard Exports
-export async function fetchDashboardSummary() {
-    const res = await fetch(`${API_URL}/dashboard/`, {
-        headers: getAuthHeaders()
+// --- Admin Users ---
+export async function fetchAdminUsers() {
+    return fetchClient('/users/');
+}
+
+export async function verifyUser(userId: string) {
+    return fetchClient(`/users/${userId}/verify`, { method: 'PATCH' });
+}
+
+export async function rejectUser(userId: string, reason: string) {
+    return fetchClient(`/users/${userId}/reject`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason })
     });
-    if (!res.ok) throw new Error('Failed to fetch dashboard summary');
-    return res.json();
+}
+
+// --- Dashboard ---
+export async function fetchDashboardSummary() {
+    return fetchClient('/dashboard/');
 }
 
 export async function fetchComplianceDocuments() {
-    const res = await fetch(`${API_URL}/dashboard/compliance`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch compliance documents');
-    return res.json();
+    return fetchClient('/dashboard/compliance');
 }
 
 export async function reorderLastOrder() {
-    const res = await fetch(`${API_URL}/dashboard/reorder-last`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to reorder last order');
-    return res.json();
+    return fetchClient('/dashboard/reorder-last', { method: 'POST' });
 }
 
+export async function fetchUserProfile() {
+    return fetchClient('/auth/profile');
+}
+
+export async function updateUserProfile(profileData: any) {
+    return fetchClient('/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(profileData)
+    });
+}
+
+export async function createOrder(orderData: any) {
+    return fetchClient('/orders/', {
+        method: 'POST',
+        body: JSON.stringify(orderData)
+    });
+}
+
+// --- Blobs & FormData (using raw fetch for specialized handling) ---
 export async function uploadVerificationLicense(file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_URL}/users/verify-upload`, {
+    const res = await fetch(`${API_BASE_URL}/users/verify-upload`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData
@@ -177,99 +203,12 @@ export async function uploadVerificationLicense(file: File) {
     return res.json();
 }
 
-export async function verifyUser(userId: string) {
-    const res = await fetch(`${API_URL}/users/${userId}/verify`, {
-        method: 'PATCH',
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to verify user');
-    return res.json();
-}
-
-export async function fetchAdminSettings() {
-    const res = await fetch(`${API_URL}/admin/settings`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch settings');
-    return res.json();
-}
-
-export async function updateAdminSettings(updates: any[]) {
-    const res = await fetch(`${API_URL}/admin/settings`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-        },
-        body: JSON.stringify({ updates })
-    });
-    if (!res.ok) throw new Error('Failed to update settings');
-    return res.json();
-}
-
-export async function fetchPublicSettings() {
-    const res = await fetch(`${API_URL}/public/settings`);
-    if (!res.ok) throw new Error('Failed to fetch public settings');
-    return res.json();
-}
-
-export async function rejectUser(userId: string, reason: string) {
-    const res = await fetch(`${API_URL}/users/${userId}/reject`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-        },
-        body: JSON.stringify({ reason })
-    });
-    if (!res.ok) throw new Error('Failed to reject user');
-    return res.json();
-}
-
-export async function fetchUserProfile() {
-    const res = await fetch(`${API_URL}/auth/profile`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch profile');
-    return res.json();
-}
-
-export async function updateUserProfile(profileData: any) {
-    const res = await fetch(`${API_URL}/auth/profile`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-        },
-        body: JSON.stringify(profileData)
-    });
-    if (!res.ok) throw new Error('Failed to update profile');
-    return res.json();
-}
-
-export async function createOrder(orderData: any) {
-    const res = await fetch(`${API_URL}/orders/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-        },
-        body: JSON.stringify(orderData)
-    });
-    if (!res.ok) throw new Error('Failed to create order');
-    return res.json();
-}
-
 export async function fetchOrderInvoice(orderId: string) {
-    const res = await fetch(`${API_URL}/orders/${orderId}/invoice`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch invoice');
-    return res.json(); // Note: Changed back to json as per previous refactor where backend returns JSON for client-side PDF
+    return fetchClient(`/orders/${orderId}/invoice`);
 }
 
 export async function fetchOrderInvoicePdfBlob(orderId: string) {
-    const res = await fetch(`${API_URL}/orders/${orderId}/invoice`, {
+    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/invoice`, {
         headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch invoice PDF');
@@ -279,7 +218,7 @@ export async function fetchOrderInvoicePdfBlob(orderId: string) {
 export async function fetchUserVerificationLicenseBlob(licenseUrl: string) {
     const absoluteUrl = licenseUrl.startsWith('http')
         ? licenseUrl
-        : `${API_URL.replace('/api/v1', '')}${licenseUrl}`;
+        : `${API_BASE_URL.replace('/api/v1', '')}${licenseUrl}`;
     const res = await fetch(absoluteUrl, {
         headers: getAuthHeaders()
     });
@@ -288,90 +227,60 @@ export async function fetchUserVerificationLicenseBlob(licenseUrl: string) {
 }
 
 export async function fetchCompliancePack(orderId: string) {
-    const res = await fetch(`${API_URL}/compliance/pack/${orderId}`, {
+    const res = await fetch(`${API_BASE_URL}/orders/pack/${orderId}`, {
         headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch compliance pack');
     return res.blob();
 }
 
-// Admin Product CRUD
+// --- Admin Products & Brands ---
 export async function createProduct(productData: any) {
-    const res = await fetch(`${API_URL}/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(productData)
-    });
-    if (!res.ok) throw new Error('Failed to create product');
-    return res.json();
+    return fetchClient('/products', { method: 'POST', body: JSON.stringify(productData) });
 }
 
 export async function updateProduct(productId: string, productData: any) {
-    const res = await fetch(`${API_URL}/products/${productId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(productData)
-    });
-    if (!res.ok) throw new Error('Failed to update product');
-    return res.json();
+    return fetchClient(`/products/${productId}`, { method: 'PUT', body: JSON.stringify(productData) });
 }
 
 export async function deleteProduct(productId: string) {
-    const res = await fetch(`${API_URL}/products/${productId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to delete product');
-    return res.json();
+    return fetchClient(`/products/${productId}`, { method: 'DELETE' });
 }
 
 export async function fetchBrands() {
-    const res = await fetch(`${API_URL}/brands`);
-    if (!res.ok) return [];
-    return res.json();
-}
-
-export async function updateBrand(brandId: number, brandData: any) {
-    const res = await fetch(`${API_URL}/brands/${brandId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(brandData)
-    });
-    if (!res.ok) throw new Error('Failed to update brand');
-    return res.json();
+    try {
+        return await fetchClient('/brands');
+    } catch { return []; }
 }
 
 export async function createBrand(brandData: any) {
-    const res = await fetch(`${API_URL}/brands`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(brandData)
-    });
-    if (!res.ok) throw new Error('Failed to create brand');
-    return res.json();
+    return fetchClient('/brands', { method: 'POST', body: JSON.stringify(brandData) });
+}
+
+export async function updateBrand(brandId: number, brandData: any) {
+    return fetchClient(`/brands/${brandId}`, { method: 'PUT', body: JSON.stringify(brandData) });
 }
 
 export async function deleteBrand(brandId: number) {
-    const res = await fetch(`${API_URL}/brands/${brandId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to delete brand');
-    return res.json();
+    return fetchClient(`/brands/${brandId}`, { method: 'DELETE' });
 }
 
+// --- Admin Settings & Stats ---
 export async function fetchAdminDashboardSummary() {
-    const res = await fetch(`${API_URL}/dashboard/admin/summary`, {
-        headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch admin dashboard summary');
-    return res.json();
+    return fetchClient('/dashboard/admin/summary');
 }
 
 export async function fetchAdminStats() {
-    const res = await fetch(`${API_URL}/dashboard/`, {
-        headers: getAuthHeaders()
+    return fetchClient('/dashboard/');
+}
+
+export async function fetchAdminSettings() {
+    return fetchClient('/admin/settings');
+}
+
+export async function updateAdminSettings(updates: any[]) {
+    return fetchClient('/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ updates })
     });
-    if (!res.ok) throw new Error('Failed to fetch stats');
-    return res.json();
 }

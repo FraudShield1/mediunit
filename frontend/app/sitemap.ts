@@ -15,45 +15,57 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         console.error('Failed to fetch data for sitemap', e);
     }
 
-    const productUrls = products.map((product: any) => ({
-        url: `${baseUrl}/products/${product.slug}`,
+    const langs = ['fr', 'en'];
+
+    const productUrls = langs.flatMap(lang => products.map((product: any) => ({
+        url: `${baseUrl}/${lang}/products/${product.slug}`,
         lastModified: new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
-    }));
+    })));
 
-    const categoryUrls = categories.map((category: any) => ({
-        url: `${baseUrl}/categories/${category.slug}`,
+    const categoryUrls = langs.flatMap(lang => categories.map((category: any) => ({
+        url: `${baseUrl}/${lang}/categories/${category.slug}`,
         lastModified: new Date(),
         changeFrequency: 'weekly' as const,
         priority: 0.9,
-    }));
+    })));
+
+    const baseUrls = langs.flatMap(lang => [
+        {
+            url: `${baseUrl}/${lang}`,
+            lastModified: new Date(),
+            changeFrequency: 'daily' as const,
+            priority: 1.0,
+        },
+        {
+            url: `${baseUrl}/${lang}/search`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/${lang}/login`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly' as const,
+            priority: 0.6,
+        },
+        {
+            url: `${baseUrl}/${lang}/cart`,
+            lastModified: new Date(),
+            changeFrequency: 'always' as const,
+            priority: 0.4,
+        }
+    ]);
 
     return [
         {
             url: baseUrl,
             lastModified: new Date(),
-            changeFrequency: 'daily',
+            changeFrequency: 'daily' as const,
             priority: 1.0,
         },
-        {
-            url: `${baseUrl}/search`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.9,
-        },
-        {
-            url: `${baseUrl}/login`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.6,
-        },
-        {
-            url: `${baseUrl}/cart`,
-            lastModified: new Date(),
-            changeFrequency: 'always',
-            priority: 0.4,
-        },
+        ...baseUrls,
         ...categoryUrls,
         ...productUrls,
     ];

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Home, Search, RefreshCcw, User, ShoppingCart } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/app/components/LocalizedLink';
 import { usePathname } from 'next/navigation';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 

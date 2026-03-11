@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/app/components/LocalizedLink';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 
 interface EmptyStateProps {

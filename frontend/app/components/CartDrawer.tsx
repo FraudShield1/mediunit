@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useCartStore } from '@/app/store/useCartStore';
 import { useLanguageStore } from '@/app/store/useLanguageStore';
 import { X, Trash2, ShoppingCart, Plus, Minus, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/app/components/LocalizedLink';
 import Image from 'next/image';
 
 export default function CartDrawer() {
