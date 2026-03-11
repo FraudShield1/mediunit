@@ -3,17 +3,22 @@ import { fetchProducts, fetchCategories } from '@/app/lib/api';
 import CategoryClient from './components/CategoryClient';
 
 export async function generateStaticParams() {
+    const langs = ['fr', 'en'];
     try {
         const categories = await fetchCategories();
 
         if (!categories || categories.length === 0) {
-            return [{ slug: 'anesthesie' }];
+            return langs.map(lang => ({ lang, slug: 'anesthesie' }));
         }
-        return categories.map((category: any) => ({
-            slug: category.slug,
-        }));
+
+        return categories.flatMap((category: any) => 
+            langs.map(lang => ({
+                lang,
+                slug: category.slug
+            }))
+        );
     } catch (e) {
-        return [{ slug: 'anesthesie' }];
+        return langs.map(lang => ({ lang, slug: 'anesthesie' }));
     }
 }
 

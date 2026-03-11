@@ -1,4 +1,6 @@
-/product/* /products/:splat 301
+/ /fr/ 302
+/product/* /fr/products/:splat 301
+/products/* /fr/products/:splat 301
 
 # Legacy Slug Mappings
 /products/neo176550g-syringe-a-embout-de-catheter--/ /products/syringe-a-embout-de-catheter-seringue-sans-latex-en-3-parties-50ml/ 301

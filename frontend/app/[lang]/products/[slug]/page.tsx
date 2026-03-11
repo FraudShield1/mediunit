@@ -47,21 +47,25 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export async function generateStaticParams() {
+    const langs = ['fr', 'en'];
     try {
-        // Force fetch from the live production backend during build
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mediunit.ma/api/v1';
+        // Use the workers.dev URL as fallback during build if the custom domain isn't ready
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
         const res = await fetch(`${apiUrl}/products`);
         const data = await res.json();
         const products = data.data || data.items || data || [];
-
+ 
         if (!products || products.length === 0) {
             console.warn("API returned 0 products during build");
             return [];
         }
-
-        return products.map((product: any) => ({
-            slug: product.slug,
-        }));
+ 
+        return products.flatMap((product: any) => 
+            langs.map(lang => ({
+                lang,
+                slug: product.slug
+            }))
+        );
     } catch (e) {
         console.error("Critical: Failed to fetch static params for products!", e);
         return [];
