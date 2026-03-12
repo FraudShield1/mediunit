@@ -28,6 +28,21 @@ export const errorHandler = async (err, c) => {
     return c.json(body, statusCode);
 };
 
-export const notFoundHandler = (c) => {
-    return c.json({ error: `Not Found: ${c.req.url}` }, 404);
+export const notFoundHandler = async (c) => {
+    const url = new URL(c.req.url);
+    const path = url.pathname;
+
+    // For API routes, return clear JSON 404
+    if (path.startsWith('/api/')) {
+        return c.json({ error: `Not Found: ${c.req.url}` }, 404);
+    }
+
+    // For everything else, fall through to Cloudflare Pages (e.g. static assets, frontend pages)
+    // env.ASSETS is a binding provided by Cloudflare when a Worker is connected to a Pages project
+    if (c.env && c.env.ASSETS) {
+        return await c.env.ASSETS.fetch(c.req.raw);
+    }
+
+    // Ultimate fallback if ASSETS binding is missing (should not happen in prod)
+    return c.json({ error: "Route not found and assets fallback failed." }, 404);
 };
