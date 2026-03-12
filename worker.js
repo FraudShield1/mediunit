@@ -206,11 +206,14 @@ export default {
                 return Response.redirect(`https://mediunit.ma/products/${newSlug}`, 301);
             }
 
-            // Also handle plural /products/ with legacy slugs
-            if (path.startsWith("/products/")) {
-                const slugCandidate = path.replace("/products/", "").replace(/\/$/, "");
+            // Also handle plural /products/ with legacy slugs (including localized)
+            const productMatch = path.match(/^\/(?:fr|en)?\/?products\/(.+)$/);
+            if (productMatch) {
+                const slugCandidate = productMatch[1].replace(/\/$/, "");
                 if (slugMapping[slugCandidate]) {
-                    return Response.redirect(`https://mediunit.ma/products/${slugMapping[slugCandidate]}`, 301);
+                    const langMatch = path.match(/^\/(fr|en)\//);
+                    const langPrefix = langMatch ? `/${langMatch[1]}` : "";
+                    return Response.redirect(`https://mediunit.ma${langPrefix}/products/${slugMapping[slugCandidate]}/`, 301);
                 }
             }
 
