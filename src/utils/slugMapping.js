@@ -3,9 +3,9 @@ export const slugMapping = {
 "aiguille-de-rachianesthesie-pointe-crayon": "aiguille-de-rachianesthesie-pointe-crayon-multi-tailles",
 "aiguille-de-ponction-lombaire": "aiguille-de-ponction-lombaire-multi-tailles",
 "aiguille-spinale-biseau-quincke": "aiguille-spinale-biseau-quincke-multi-tailles",
-"sonde-dintubation-avec-ballonnet": "sonde-dintubation-avec-ballonnet-multi-tailles",
-"sonde-dintubation-sans-ballonnet": "sonde-dintubation-sans-ballonnet-multi-tailles",
-"sonde-dintubation-armee": "sonde-dintubation-armee-multi-tailles",
+"sonde-dintubation-avec-ballonnet": "sonde-d-intubation-avec-ballonnet-multi-tailles",
+"sonde-dintubation-sans-ballonnet": "sonde-d-intubation-sans-ballonnet-multi-tailles",
+"sonde-dintubation-armee": "sonde-d-intubation-armee-multi-tailles",
 "masque-larynge-fast-track": "masque-larynge-fast-track-multi-tailles",
 "canule-de-guedel": "canule-de-guedel-multi-tailles",
 "monture-de-catheter": "monture-de-catheter-multi-tailles",
@@ -47,7 +47,7 @@ export const slugMapping = {
 "otu-100sl-ureteroscope-souple-usage-uniq": "ureteroscope-souple-usage-unique-flexible-wiscope-7-5-fr",
 "otu-a-systeme-dimagerie-pour-ureter": "systeme-d-imagerie-pour-ureteroscope",
 "ne176520-seringue-luer-slip---seringue-": "seringue-luer-slip-seringue-en-3-parties-sans-latex-20ml",
-"neo176550g-syringe-a-embout-de-catheter--": "seringue-a-embout-de-catheter-seringue-sans-latex-en-3-parties-50ml",
+"neo176550g-syringe-a-embout-de-catheter--": "syringe-a-embout-de-catheter-seringue-sans-latex-en-3-parties-50ml",
 // Kits
 "kit-suture-standard": "kit-de-suture-standard-complet",
 "kit-soin-dentaire-essentiel": "kit-de-soin-dentaire-essentiel",
@@ -55,5 +55,13 @@ export const slugMapping = {
 "kit-consultation-generaliste": "kit-de-consultation-generaliste",
 "kit-examen-gynecologique": "kit-d-examen-gynecologique",
 "kit-sondage-urinaire": "kit-de-sondage-urinaire",
-"kit-premiers-secours-urgence": "kit-de-premiers-secours-urgence"
+"kit-premiers-secours-urgence": "kit-de-premiers-secours-urgence",
+// Additional Typo Fallbacks
+"sonde-dintubation-subglottique-5": "sonde-d-intubation-subglottique-5",
+"sonde-dintubation-avec-ballonnet-multi-tailles": "sonde-d-intubation-avec-ballonnet-multi-tailles",
+"sonde-dintubation-sans-ballonnet-multi-tailles": "sonde-d-intubation-sans-ballonnet-multi-tailles",
+"kit-de-sonde-dintubation-selective-droite-ch39": "kit-de-sonde-d-intubation-selective-droite-ch39",
+"kit-de-sonde-dintubation-selective-gauche-ch41": "kit-de-sonde-d-intubation-selective-gauche-ch41",
+"kit-de-sonde-dintubation-selective-gauche-ch26": "kit-de-sonde-d-intubation-selective-gauche-ch26",
+"sonde-dintubation-armee-multi-tailles": "sonde-d-intubation-armee-multi-tailles"
 };
