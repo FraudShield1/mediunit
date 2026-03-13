@@ -9,7 +9,7 @@ interface LaunchDarklyProviderProps {
   children: ReactNode;
 }
 
-const LaunchDarklyProvider = ({ children }: { children?: React.ReactNode }) => {
+const LaunchDarklyProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
@@ -22,7 +22,7 @@ const WrappedProvider = withLDProvider({
   options: {
     bootstrap: 'localStorage',
   },
-})(LaunchDarklyProvider);
+})(LaunchDarklyProvider as React.ComponentType<{}>);
 
 export default WrappedProvider as React.ComponentType<{ children: React.ReactNode }>;
 

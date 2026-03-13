@@ -19,7 +19,7 @@ const WhatsAppChat = () => {
       aria-label="Chat on WhatsApp"
     >
       <div className="absolute -top-12 right-0 bg-white text-slate-800 text-sm font-medium px-3 py-1.5 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-        Besoin d'aide ? Chattez avec nous !
+        Besoin d&apos;aide ? Chattez avec nous !
         <div className="absolute -bottom-1 right-5 w-2 h-2 bg-white rotate-45"></div>
       </div>
       <MessageCircle size={28} fill="currentColor" />
