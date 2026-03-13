@@ -2,7 +2,7 @@ import { fetchProducts, fetchProductBySlug } from '@/app/lib/api';
 import ProductClient from './components/ProductClient';
 import { Metadata } from 'next';
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { slug: string, lang: string } }): Promise<Metadata> {
     try {
         const product = await fetchProductBySlug(params.slug);
         const name = product.name_en || product.name;
@@ -18,10 +18,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
                 title,
                 description,
                 type: 'article',
-                url: `https://mediunit.ma/products/${params.slug}`,
+                url: `https://mediunit.ma/${params.lang}/products/${params.slug}`,
                 siteName: 'MediUnit',
-                locale: 'fr_MA',
-                alternateLocale: ['en_US'],
+                locale: params.lang === 'en' ? 'en_US' : 'fr_MA',
+                alternateLocale: params.lang === 'en' ? ['fr_MA'] : ['en_US'],
                 images: [
                     {
                         url: product.image_url,
@@ -38,7 +38,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
                 images: [product.image_url],
             },
             alternates: {
-                canonical: `/products/${params.slug}`,
+                canonical: `/${params.lang}/products/${params.slug}`,
+                languages: {
+                    'fr-MA': `/fr/products/${params.slug}`,
+                    'en-US': `/en/products/${params.slug}`,
+                },
             },
         };
     } catch (e) {
@@ -72,7 +76,7 @@ export async function generateStaticParams() {
     }
 }
 
-export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
+export default async function ProductDetailPage({ params }: { params: { slug: string, lang: string } }) {
     let product = null;
     let relatedProducts = [];
     try {
@@ -106,7 +110,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         },
         offers: {
             '@type': 'Offer',
-            url: `https://mediunit.ma/products/${product.slug}`,
+            url: `https://mediunit.ma/${params.lang}/products/${product.slug}`,
             priceCurrency: 'MAD',
             price: product.base_unit_price,
             availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',

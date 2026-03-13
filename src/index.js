@@ -37,10 +37,26 @@ app.use('*', async (c, next) => {
     const productMatch = path.match(/^\/(?:fr|en)?\/?products\/(.+)$/);
     if (productMatch) {
         const slugCandidate = productMatch[1].replace(/\/$/, "");
-        if (slugMapping[slugCandidate]) {
+        const targetSlug = slugMapping[slugCandidate];
+        if (targetSlug && targetSlug !== slugCandidate) {
             const langMatch = path.match(/^\/(fr|en)\//);
             const langPrefix = langMatch ? `/${langMatch[1]}` : "";
-            return c.redirect(`https://mediunit.ma${langPrefix}/products/${slugMapping[slugCandidate]}/`, 301);
+            return c.redirect(`https://mediunit.ma${langPrefix}/products/${targetSlug}/`, 301);
+        }
+    }
+
+    // 3. Category Redirects: /category/ -> /categories/ and hyphenation
+    const categoryMatch = path.match(/^\/(?:fr|en)?\/?categor(?:ies|y)\/(.+)$/);
+    if (categoryMatch) {
+        const slugCandidate = categoryMatch[1].replace(/\/$/, "");
+        // Standardize category slug (e.g., gants-dexamen -> gants-d-examen)
+        const targetSlug = slugMapping[slugCandidate] || slugCandidate;
+        const isLegacyPath = path.includes("/category/");
+        
+        if (targetSlug !== slugCandidate || isLegacyPath) {
+            const langMatch = path.match(/^\/(fr|en)\//);
+            const langPrefix = langMatch ? `/${langMatch[1]}` : "";
+            return c.redirect(`https://mediunit.ma${langPrefix}/categories/${targetSlug}/`, 301);
         }
     }
 
@@ -67,6 +83,7 @@ app.use('/api/v1/*', rateLimitMiddleware(200, 60, 'global'));
 
 // Health Check
 app.get('/api/health', (c) => c.json({ status: 'ok', version: '2.0.0-architecture-upgrade' }));
+app.get('/api/v1/health', (c) => c.json({ status: 'ok', version: '2.0.0-architecture-upgrade' }));
 
 // Wire Route Modules
 app.route('/api/v1/auth', authRoutes);

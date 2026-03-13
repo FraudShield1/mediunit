@@ -40,20 +40,60 @@ export class ProductRepository {
             WHERE p.slug = ? OR CAST(p.id AS TEXT) = ?
         `).bind(identifier, identifier).first();
 
+        // Modernization Fallback: Try hyphenation variations if not found
+        if (!product && typeof identifier === 'string') {
+            const normalizedSlug = identifier.replace(/-/g, '');
+            product = await this.db.prepare(`
+                SELECT p.*, c.name as category_name, c.name_en as category_name_en, c.slug as category_slug, 
+                       b.name as brand_name, b.manufacturer as brand_manufacturer,
+                       b.ce_certificate_url as brand_ce_cert_url
+                FROM product p 
+                LEFT JOIN category c ON p.category_id = c.id 
+                LEFT JOIN brand b ON p.brand_id = b.id 
+                WHERE REPLACE(p.slug, '-', '') = ? 
+                   OR p.slug = ?
+                   OR p.slug = ?
+                LIMIT 1
+            `).bind(
+                normalizedSlug.replace('multitailles', ''), 
+                identifier.replace(/-multi-tailles$/, ''),
+                identifier.replace('sonde-d-intubation', 'sonde-dintubation')
+            ).first();
+        }
+
         return product;
     }
 
     async findBySlugFuzzy(identifier) {
-        return await this.db.prepare(`
+        // Try exact name match or slugified name match
+        const slugified = identifier.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        
+        let product = await this.db.prepare(`
             SELECT p.*, c.name as category_name, c.name_en as category_name_en, c.slug as category_slug, 
-                   b.name as brand_name, b.manufacturer as brand_manufacturer,
-                   b.ce_certificate_url as brand_ce_cert_url
+                   b.name as brand_name
             FROM product p 
             LEFT JOIN category c ON p.category_id = c.id 
             LEFT JOIN brand b ON p.brand_id = b.id 
-            WHERE p.slug LIKE ? OR p.name LIKE ?
+            WHERE p.name = ? OR p.name_en = ? 
+               OR p.slug = ?
+               OR LOWER(p.name) LIKE ? OR LOWER(p.name_en) LIKE ?
             LIMIT 1
-        `).bind(`${identifier}%`, `%${identifier}%`).first();
+        `).bind(identifier, identifier, slugified, `%${identifier.replace(/-/g, ' ')}%`, `%${identifier.replace(/-/g, ' ')}%`).first();
+
+        if (product) return product;
+
+        // Then try fuzzy slug
+        const normalized = identifier.replace(/-/g, '%');
+        return await this.db.prepare(`
+            SELECT p.*, c.name as category_name, c.name_en as category_name_en, c.slug as category_slug, 
+                   b.name as brand_name
+            FROM product p 
+            LEFT JOIN category c ON p.category_id = c.id 
+            LEFT JOIN brand b ON p.brand_id = b.id 
+            WHERE p.slug LIKE ? OR p.slug LIKE ?
+               OR p.name_en LIKE ?
+            LIMIT 1
+        `).bind(`%${identifier}%`, `%${normalized}%`, `%${identifier.replace(/-/g, ' ')}%`).first();
     }
 
     async updateStock(productId, quantityToSubtract) {

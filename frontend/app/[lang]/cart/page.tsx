@@ -13,7 +13,7 @@ const FREE_DELIVERY_THRESHOLD = 1500;
 const DELIVERY_FEE_MAD = 50;
 
 export default function CartPage() {
-    const { language, t } = useLanguageStore();
+    const { language, t, translateProduct } = useLanguageStore();
     const { items, removeItem, updateQuantity } = useCartStore();
 
     const getDiscountedPrice = (basePrice: number, qty: number) => {
@@ -59,7 +59,7 @@ export default function CartPage() {
                                         <Image src={item.image} alt={item.name} fill className="object-cover" />
                                     </div>
                                     <div className="flex-1 text-center md:text-left">
-                                        <h3 className="font-bold text-slate-gray-dark leading-tight mb-1">{item.name}</h3>
+                                        <h3 className="font-bold text-slate-gray-dark leading-tight mb-1">{translateProduct(item.name, item.name_en)}</h3>
                                         <p className="text-xs text-slate-gray font-mono uppercase tracking-widest">RÉF: {item.sku}</p>
                                     </div>
                                     <div className="flex flex-col items-center gap-4">

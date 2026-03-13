@@ -27,7 +27,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
     metadataBase: new URL('https://mediunit.ma'),
-    title: "MediUnit | Dispositifs Médicaux & Consommables au Maroc",
+    title: {
+        default: "MediUnit | Dispositifs Médicaux & Consommables au Maroc",
+        template: "%s | MediUnit Morocco"
+    },
     description: "MediUnit : Sourcing B2B de dispositifs médicaux certifiés au Maroc. Livraison express à Casablanca et partout dans le royaume. Qualité clinique garantie.",
     manifest: "/manifest.json",
     keywords: ["dispositifs médicaux", "consommables médicaux", "maroc", "casablanca", "sourcing clinique", "kits médicaux", "matériel de chirurgie"],

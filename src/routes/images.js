@@ -6,7 +6,20 @@ app.get('/:key', async (c) => {
     let key = c.req.param('key');
     try {
         key = decodeURIComponent(key);
-        const object = await c.env.STORAGE.get(key);
+        let object = await c.env.STORAGE.get(key);
+        if (!object && !key.startsWith('images/')) {
+            object = await c.env.STORAGE.get(`images/${key}`);
+        }
+        
+        // Case-insensitive fallback
+        if (!object) {
+            const lowerKey = key.toLowerCase();
+            object = await c.env.STORAGE.get(lowerKey);
+            if (!object && !lowerKey.startsWith('images/')) {
+                object = await c.env.STORAGE.get(`images/${lowerKey}`);
+            }
+        }
+        
         if (!object) {
             return c.json({ error: "Image not found" }, 404);
         }

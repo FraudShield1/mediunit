@@ -15,7 +15,7 @@ export default function Footer() {
     }, []);
 
     const supportEmail = settings?.support_email || 'abdel@mediunit.ma';
-    const whatsappNumber = settings?.whatsapp_number || '+212600000000';
+    const whatsappNumber = settings?.whatsapp_number || '+212661364375';
 
     return (
         <footer className="bg-white border-t border-slate-gray-light/10 pt-16 pb-24 md:pb-16 mt-24">

@@ -45,7 +45,7 @@ export class OrderService {
 
         // 3. Persist Order Transactionally (using the Repository)
         const addrId = await this.orderRepository.createAddress(shipping);
-        const orderId = await this.orderRepository.createOrder(total, addrId, user.sub);
+        const orderId = await this.orderRepository.createOrder(total, addrId, user?.sub || null);
         await this.orderRepository.createOrderItemsBatch(orderId, itemsWithPrice);
 
         return { orderId, total, itemsWithPrice };

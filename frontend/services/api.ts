@@ -2,7 +2,7 @@
 // This replaces scattered fetch calls across components to ensure consistent base URLs,
 // error handling, token injection, and response parsing.
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mediunit.ma/api/v1';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mediunit-backend.a-naouri.workers.dev/api/v1';
 
 export class ApiError extends Error {
     constructor(public status: number, message: string) {

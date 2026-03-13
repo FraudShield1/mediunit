@@ -17,7 +17,7 @@ const DEFAULT_VAT_RATE = 0.20;
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { t } = useLanguageStore();
+    const { t, translateProduct } = useLanguageStore();
     const { items: storeItems, clearCart } = useCartStore();
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -247,7 +247,7 @@ export default function CheckoutPage() {
                                                 <Image src={item.image} alt={item.name} fill className="object-cover" />
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className="text-sm font-black text-slate-gray-dark line-clamp-1 group-hover:text-medical-blue transition-colors">{item.name}</h4>
+                                                <h4 className="text-sm font-black text-slate-gray-dark line-clamp-1 group-hover:text-medical-blue transition-colors">{translateProduct(item.name, item.name_en)}</h4>
                                                 <div className="flex justify-between items-center mt-2">
                                                     <span className="px-2 py-1 bg-medical-blue/5 text-medical-blue text-[10px] font-black rounded-md uppercase">{t('Qté:', 'Qty:')} {item.quantity}</span>
                                                     <span className="font-bold text-slate-gray-dark">MAD {(itemPrice * item.quantity).toFixed(2)}</span>

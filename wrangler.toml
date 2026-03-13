@@ -1,9 +1,7 @@
-name = "mediunit-backend"
+name = "mediunit-frontend"
 compatibility_date = "2024-02-25"
-main = "src/index.js"
 
-[pages]
-build_output_dir = "frontend/out"
+pages_build_output_dir = "frontend/out"
 
 [vars]
 ENVIRONMENT = "production"

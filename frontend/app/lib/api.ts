@@ -1,6 +1,6 @@
 import { fetchClient, API_BASE_URL } from '../../services/api';
 
-const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || '';
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || 'https://mediunit-backend.a-naouri.workers.dev';
 
 export function resolveImageUrl(path: string | undefined | null) {
     if (!path || path === '/') return '';
@@ -102,14 +102,26 @@ export async function resetPassword(token: string, new_password: string) {
 }
 
 // --- Public ---
+export async function fetchAttributes(categorySlug?: string) {
+    const params = new URLSearchParams();
+    if (categorySlug) params.append('category_slug', categorySlug);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return fetchClient(`/attributes${qs}`);
+}
+
 export async function fetchCategories() {
     return fetchClient('/categories');
 }
 
-export async function fetchProducts(categorySlug?: string, search?: string) {
+export async function fetchProducts(categorySlug?: string, search?: string, attributes: Record<string, string> = {}) {
     const params = new URLSearchParams();
     if (categorySlug) params.append('category_slug', categorySlug);
     if (search) params.append('search', search);
+    
+    // Add faceted filters
+    Object.entries(attributes).forEach(([k, v]) => {
+        if (v) params.append(`attr_${k}`, v);
+    });
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     return fetchClient(`/products${qs}`);
@@ -120,7 +132,7 @@ export async function fetchProductBySlug(slug: string) {
 }
 
 export async function fetchPublicSettings() {
-    return fetchClient('/public/settings');
+    return fetchClient('/settings/public');
 }
 
 // --- Admin Orders ---

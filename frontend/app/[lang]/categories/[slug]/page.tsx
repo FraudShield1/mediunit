@@ -22,7 +22,7 @@ export async function generateStaticParams() {
     }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: { slug: string, lang: string } }) {
     try {
         const categories = await fetchCategories();
         const category = categories.find((c: any) => c.slug === params.slug);
@@ -40,11 +40,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
                 title,
                 description,
                 type: 'website',
-                url: `https://mediunit.ma/categories/${params.slug}`,
+                url: `https://mediunit.ma/${params.lang}/categories/${params.slug}`,
                 siteName: 'MediUnit',
+                locale: params.lang === 'en' ? 'en_US' : 'fr_MA',
+                images: [
+                    {
+                        url: 'https://mediunit.ma/logo.png',
+                        width: 1200,
+                        height: 630,
+                        alt: 'MediUnit Medical Supplies',
+                    }
+                ]
             },
             alternates: {
-                canonical: `/categories/${params.slug}`,
+                canonical: `/${params.lang}/categories/${params.slug}`,
+                languages: {
+                    'fr-MA': `/fr/categories/${params.slug}`,
+                    'en-US': `/en/categories/${params.slug}`,
+                },
             },
         };
     } catch (e) {
@@ -52,7 +65,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     }
 }
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: { slug: string, lang: string } }) {
     let products = [];
     let category = null;
 
@@ -75,7 +88,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
             position: index + 1,
             item: {
                 '@type': 'Product',
-                url: `https://mediunit.ma/products/${product.slug}`,
+                url: `https://mediunit.ma/${params.lang}/products/${product.slug}`,
                 name: product.name,
                 image: product.image_url,
                 sku: product.sku,

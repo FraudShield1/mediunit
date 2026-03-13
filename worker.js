@@ -1,5 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
+import * as LD from 'launchdarkly-cloudflare-edge-sdk';
+
 
 async function hashPassword(password, env) {
     const encoder = new TextEncoder();
@@ -125,7 +127,15 @@ export default {
             return new Response(null, { headers: corsHeaders });
         }
 
+        // Initialize LaunchDarkly
+        let ldClient = null;
+        if (env.LAUNCHDARKLY_SDK_KEY) {
+            ldClient = LD.init(env.LAUNCHDARKLY_SDK_KEY);
+            await ldClient.waitForInitialization();
+        }
+
         try {
+
             const url = new URL(request.url);
             const path = url.pathname;
             const method = request.method;
@@ -136,9 +146,18 @@ export default {
                 "aiguille-de-rachianesthesie-pointe-crayon": "aiguille-de-rachianesthesie-pointe-crayon-multi-tailles",
                 "aiguille-de-ponction-lombaire": "aiguille-de-ponction-lombaire-multi-tailles",
                 "aiguille-spinale-biseau-quincke": "aiguille-spinale-biseau-quincke-multi-tailles",
-                "sonde-dintubation-avec-ballonnet": "sonde-d-intubation-avec-ballonnet-multi-tailles",
-                "sonde-dintubation-sans-ballonnet": "sonde-d-intubation-sans-ballonnet-multi-tailles",
-                "sonde-dintubation-armee": "sonde-d-intubation-armee-multi-tailles",
+                "sonde-dintubation-avec-ballonnet": "sonde-dintubation-avec-ballonnet",
+                "sonde-d-intubation-avec-ballonnet": "sonde-dintubation-avec-ballonnet",
+                "sonde-dintubation-avec-ballonnet-multi-tailles": "sonde-dintubation-avec-ballonnet",
+                "sonde-d-intubation-avec-ballonnet-multi-tailles": "sonde-dintubation-avec-ballonnet",
+                "sonde-dintubation-sans-ballonnet": "sonde-dintubation-sans-ballonnet",
+                "sonde-d-intubation-sans-ballonnet": "sonde-dintubation-sans-ballonnet",
+                "sonde-dintubation-sans-ballonnet-multi-tailles": "sonde-dintubation-sans-ballonnet",
+                "sonde-d-intubation-sans-ballonnet-multi-tailles": "sonde-dintubation-sans-ballonnet",
+                "sonde-dintubation-armee": "sonde-dintubation-armee",
+                "sonde-d-intubation-armee": "sonde-dintubation-armee",
+                "sonde-dintubation-armee-multi-tailles": "sonde-dintubation-armee",
+                "sonde-d-intubation-armee-multi-tailles": "sonde-dintubation-armee",
                 "masque-larynge-fast-track": "masque-larynge-fast-track-multi-tailles",
                 "canule-de-guedel": "canule-de-guedel-multi-tailles",
                 "monture-de-catheter": "monture-de-catheter-multi-tailles",
@@ -157,6 +176,7 @@ export default {
                 "gants-chirurgicaux-en-latex-steriles": "gants-chirurgicaux-en-latex-steriles-multi-tailles",
                 "seringue-luer-slip-3-pieces": "seringue-luer-slip-3-pieces-multi-tailles",
                 "gants-dexamen-non-steriles": "gants-d-examen-non-steriles-multi-tailles",
+                "gants-d-examen-non-steriles": "gants-d-examen-non-steriles-multi-tailles",
                 "pharmaplast-pansements-espuma-ag": "pharmaplast-pansements-espuma-ag-multi-tailles",
                 "speculum-vaginal-greatcare": "speculum-vaginal-greatcare-multi-tailles",
                 "speculum-nasal-greatcare": "speculum-nasal-greatcare-multi-tailles",
@@ -193,11 +213,18 @@ export default {
                 "sonde-dintubation-subglottique-5": "sonde-d-intubation-subglottique-5",
                 "sonde-dintubation-avec-ballonnet-multi-tailles": "sonde-d-intubation-avec-ballonnet-multi-tailles",
                 "sonde-dintubation-sans-ballonnet-multi-tailles": "sonde-d-intubation-sans-ballonnet-multi-tailles",
-                "kit-de-sonde-dintubation-selective-droite-ch39": "kit-de-sonde-d-intubation-selective-droite-ch39",
-                "kit-de-sonde-dintubation-selective-gauche-ch41": "kit-de-sonde-d-intubation-selective-gauche-ch41",
-                "kit-de-sonde-dintubation-selective-gauche-ch26": "kit-de-sonde-d-intubation-selective-gauche-ch26",
-                "sonde-dintubation-armee-multi-tailles": "sonde-d-intubation-armee-multi-tailles"
+                "sonde-dintubation-armee-multi-tailles": "sonde-d-intubation-armee-multi-tailles",
+                // Categories
+                "gants-dexamen": "gants-d-examen",
+                "premiers-secours-et-urgence": "premiers-secours-urgence"
             };
+
+            // Redirect /category/* to /categories/*
+            if (path.startsWith("/category/")) {
+                const catSlug = path.replace("/category/", "").replace(/\/$/, "");
+                const newSlug = slugMapping[catSlug] || catSlug;
+                return Response.redirect(`https://mediunit.ma/categories/${newSlug}`, 301);
+            }
 
             // Redirect /product/* to /products/* (singular to plural)
             if (path.startsWith("/product/")) {
@@ -222,6 +249,7 @@ export default {
                 if (path.startsWith("/api/v1/images/")) return true;
                 if (path === "/api/v1/auth/login" && method === "POST") return true;
                 if (path === "/api/v1/auth/register" && method === "POST") return true;
+                if (path === "/api/v1/orders/" && method === "POST") return true; // Guest Checkout
                 if (path === "/api/v1/categories" && method === "GET" || method === "HEAD") return true;
                 if (path === "/api/v1/brands" && method === "GET" || method === "HEAD") return true;
                 if (path === "/api/v1/products" && method === "GET" || method === "HEAD") return true;
@@ -233,9 +261,9 @@ export default {
             };
 
             // --- 2. AUTHENTICATION & ACL GUARD ---
-            let authUser = null;
+            let authUser = await getAuthUser(request, env, corsHeaders);
+
             if (!isPublicRoute(path, method)) {
-                authUser = await getAuthUser(request, env, corsHeaders);
                 if (!authUser) {
                     return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
                 }
@@ -319,6 +347,43 @@ export default {
                 return new Response(JSON.stringify({ success: true, id }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
             }
 
+            if (path === "/api/v1/attributes") {
+                const categorySlug = url.searchParams.get("category_slug");
+                let sql = "SELECT p.specifications FROM product p ";
+                const args = [];
+                if (categorySlug) {
+                    sql += "LEFT JOIN category c ON p.category_id = c.id WHERE c.slug = ?";
+                    args.push(categorySlug);
+                }
+                const { results } = await env.DB.prepare(sql).bind(...args).all();
+                
+                const attributes = {};
+                for (const r of results) {
+                    if (!r.specifications) continue;
+                    try {
+                        const spec = typeof r.specifications === 'string' ? JSON.parse(r.specifications) : r.specifications;
+                        for (const [k, v] of Object.entries(spec)) {
+                            if (k === 'specifications' || k === 'product' || k === 'sku') continue;
+                            if (!attributes[k]) attributes[k] = new Set();
+                            if (Array.isArray(v)) {
+                                v.forEach(item => attributes[k].add(String(item)));
+                            } else if (v !== null && v !== undefined) {
+                                attributes[k].add(String(v));
+                            }
+                        }
+                    } catch (e) {}
+                }
+                
+                const response = {};
+                for (const [k, v] of Object.entries(attributes)) {
+                    response[k] = Array.from(v).sort();
+                }
+                
+                return new Response(JSON.stringify(response), {
+                    headers: { "Content-Type": "application/json", ...corsHeaders }
+                });
+            }
+
             if (path === "/api/v1/products") {
                 const categorySlug = url.searchParams.get("category_slug");
                 const search = url.searchParams.get("search");
@@ -338,6 +403,16 @@ export default {
                 if (search) {
                     sql += " AND (p.name LIKE ? OR p.sku LIKE ? OR p.name_en LIKE ?)";
                     args.push(`%${search}%`, `%${search}%`, `%${search}%`);
+                }
+
+                // Advanced filtering by specifications (Faceted Search)
+                for (const [key, value] of url.searchParams.entries()) {
+                    if (key.startsWith("attr_")) {
+                        const attrName = key.replace("attr_", "");
+                        const jsonPath = '$.' + (attrName.includes(' ') ? `"${attrName}"` : attrName);
+                        sql += ` AND (json_extract(p.specifications, ?) = ? OR json_extract(p.specifications, ?) LIKE ?)`;
+                        args.push(jsonPath, value, jsonPath, `%${value}%`);
+                    }
                 }
                 sql += " ORDER BY p.popularity DESC LIMIT ? OFFSET ?";
                 args.push(limit, offset);
@@ -371,7 +446,27 @@ export default {
                         WHERE p.slug = ?
                     `).bind(resolvedSlug).first();
 
-                    // Fuzzy fallback: if not found, try slug LIKE %...%
+                    // Modernization Fallback: Try hyphenation variations if not found
+                    if (!product) {
+                        const normalizedSlug = resolvedSlug.replace(/-/g, '');
+                        // Try removing hyphens entirely or adding them in known positions
+                        product = await env.DB.prepare(`
+                            SELECT p.*, c.name as category_name, c.name_en as category_name_en, b.name as brand_name, b.manufacturer 
+                            FROM product p 
+                            LEFT JOIN category c ON p.category_id = c.id 
+                            LEFT JOIN brand b ON p.brand_id = b.id 
+                            WHERE REPLACE(p.slug, '-', '') = ? 
+                               OR p.slug = ?
+                               OR p.slug = ?
+                            LIMIT 1
+                        `).bind(
+                            normalizedSlug.replace('multi-tailles', ''), 
+                            resolvedSlug.replace(/-multi-tailles$/, ''),
+                            resolvedSlug.replace('sonde-d-intubation', 'sonde-dintubation')
+                        ).first();
+                    }
+
+                    // Fuzzy fallback: if still not found, try slug LIKE %...%
                     if (!product) {
                         product = await env.DB.prepare(`
                             SELECT p.*, c.name as category_name, c.name_en as category_name_en, b.name as brand_name, b.manufacturer 
@@ -505,9 +600,9 @@ export default {
                         };
 
                         // Header Contact Info (Opposite side)
-                        page.drawText('MediUnit - Excellence Clinique', { x: width - 200, y: height - 40, size: 10, font: fontBold, color: primaryColor });
-                        page.drawText('Contact: +212 661 36 43 75', { x: width - 200, y: height - 55, size: 9, font: fontRegular, color: grayColor });
-                        page.drawText('Email: support@mediunit.ma', { x: width - 200, y: height - 70, size: 9, font: fontRegular, color: grayColor });
+                        page.drawText(t('MediUnit - Excellence Clinique', 'MediUnit - Clinical Excellence'), { x: width - 200, y: height - 40, size: 10, font: fontBold, color: primaryColor });
+                        page.drawText(t('Contact: +212 661 36 43 75', 'Contact: +212 661 36 43 75'), { x: width - 200, y: height - 55, size: 9, font: fontRegular, color: grayColor });
+                        page.drawText(t('Email: support@mediunit.ma', 'Email: support@mediunit.ma'), { x: width - 200, y: height - 70, size: 9, font: fontRegular, color: grayColor });
 
                         // Subtle header separating line
                         page.drawLine({ start: { x: 40, y: height - 100 }, end: { x: width - 40, y: height - 100 }, thickness: 1, color: softTeal });
@@ -519,7 +614,7 @@ export default {
                         // Section 1: Informations Générales
                         drawSectionTitle(t("1. Informations d'Identification", "1. Identification Information"));
                         drawBulletPoint(t('Marque :', 'Brand :'), cleanStr(product.brand_name || 'MediUnit Standard'));
-                        drawBulletPoint(t('Désignation :', 'Designation :'), cleanStr(product.name));
+                        drawBulletPoint(t('Désignation :', 'Designation :'), (lang === 'en' && product.name_en ? cleanStr(product.name_en) : cleanStr(product.name)));
                         drawBulletPoint('SKU :', cleanStr(product.sku));
                         drawBulletPoint(t('Catégorie :', 'Category :'), (lang === 'en' ? cleanStr(product.category_name_en) : cleanStr(product.category_name)) || t('Consommable', 'Consumable'));
 
@@ -537,7 +632,25 @@ export default {
                         for (const [key, value] of Object.entries(specParsed)) {
                             if (['marque', 'fabricant', 'sku', 'brand', 'manufacturer'].includes(key.toLowerCase())) continue;
 
-                            let label = cleanStr(key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ') + ' :');
+                            const specKeyMap = {
+                                'matériau': 'Material',
+                                'stérilisation': 'Sterilization',
+                                'conformité ce / iso': 'Compliance',
+                                'conformité': 'Compliance',
+                                'usage clinique': 'Clinical Usage',
+                                'caractéristiques': 'Features',
+                                'dimensions': 'Dimensions',
+                                'diamètre': 'Diameter',
+                                'longueur': 'Length',
+                                'poids': 'Weight'
+                            };
+
+                            let displayKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+                            if (lang === 'en' && specKeyMap[key.toLowerCase()]) {
+                                displayKey = specKeyMap[key.toLowerCase()];
+                            }
+                            let label = cleanStr(displayKey + ' :');
+
                             if (key.toLowerCase() === 'variants') {
                                 label = t('Tailles Disponibles :', 'Available Sizes :');
                             }
@@ -551,14 +664,22 @@ export default {
                         drawSectionTitle(t('3. Conformité et Documentation', '3. Compliance and Documentation'));
                         drawBulletPoint(t('Certificat CE :', 'CE Certificate :'), t('Disponible sur demande / Inclus dans le pack compliance', 'Available upon request / Included in compliance pack'));
                         drawBulletPoint(t('Stérilisation :', 'Sterilization :'), product.specifications?.includes('Stérile') ? t("Oxyde d'éthylène (STERILE EO)", "Ethylene Oxide (STERILE EO)") : t('Non stérile / N/A', 'Non-sterile / N/A'));
-                        drawBulletPoint(t('Conditionnement :', 'Packaging :'), cleanStr(product.packaging_type) || t('Unité', 'Unit'));
+                        const packagingMap = {
+                            'Unité': 'Unit',
+                            'Pack': 'Pack',
+                            'Boîte': 'Box',
+                            'Carton': 'Carton',
+                            'Sachet': 'Sachet'
+                        };
+                        const displayPackaging = lang === 'en' ? (packagingMap[product.packaging_type] || cleanStr(product.packaging_type)) : cleanStr(product.packaging_type);
+                        drawBulletPoint(t('Conditionnement :', 'Packaging :'), displayPackaging || t('Unité', 'Unit'));
 
 
 
                         // Section 4: Description Clinique
                         drawSectionTitle(t('4. Description Clinique', '4. Clinical Description'));
 
-                        const rawDesc = String(product.description || '');
+                        const rawDesc = String((lang === 'en' && product.description_en ? product.description_en : product.description) || '');
                         let cleanDesc = rawDesc
                             .replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '')
                             .replace(/<p[^>]*>/gi, '')
@@ -633,27 +754,48 @@ export default {
 
                 const resolvedSlug = slugMapping[slug] || slug;
                 let product = await env.DB.prepare(`
-          SELECT p.*, c.name as category_name, c.slug as category_slug, 
-                 b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
-                 b.ce_certificate_url as brand_ce_cert_url
-          FROM product p 
-          LEFT JOIN category c ON p.category_id = c.id 
-          LEFT JOIN brand b ON p.brand_id = b.id 
-          WHERE p.slug = ?
-        `).bind(resolvedSlug).first();
+                    SELECT p.*, c.name as category_name, c.slug as category_slug, 
+                           b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
+                           b.ce_certificate_url as brand_ce_cert_url
+                    FROM product p 
+                    LEFT JOIN category c ON p.category_id = c.id 
+                    LEFT JOIN brand b ON p.brand_id = b.id 
+                    WHERE p.slug = ?
+                `).bind(resolvedSlug).first();
 
-                // Fuzzy fallback: if not found, try slug LIKE %...%
+                // Modernization Fallback: Try hyphenation variations if not found
+                if (!product) {
+                    const normalizedSlug = resolvedSlug.replace(/-/g, '');
+                    product = await env.DB.prepare(`
+                        SELECT p.*, c.name as category_name, c.slug as category_slug, 
+                               b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
+                               b.ce_certificate_url as brand_ce_cert_url
+                        FROM product p 
+                        LEFT JOIN category c ON p.category_id = c.id 
+                        LEFT JOIN brand b ON p.brand_id = b.id 
+                        WHERE REPLACE(p.slug, '-', '') = ? 
+                           OR p.slug = ?
+                           OR p.slug = ?
+                        LIMIT 1
+                    `).bind(
+                        normalizedSlug.replace('multitailles', ''), 
+                        resolvedSlug.replace(/-multi-tailles$/, ''),
+                        resolvedSlug.replace('sonde-d-intubation', 'sonde-dintubation')
+                    ).first();
+                }
+
+                // Fuzzy fallback: if still not found, try slug LIKE %...%
                 if (!product) {
                     product = await env.DB.prepare(`
-              SELECT p.*, c.name as category_name, c.slug as category_slug, 
-                     b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
-                     b.ce_certificate_url as brand_ce_cert_url
-              FROM product p 
-              LEFT JOIN category c ON p.category_id = c.id 
-              LEFT JOIN brand b ON p.brand_id = b.id 
-              WHERE p.slug LIKE ? OR p.name LIKE ?
-              LIMIT 1
-            `).bind(`${resolvedSlug}%`, `%${resolvedSlug}%`).first();
+                        SELECT p.*, c.name as category_name, c.slug as category_slug, 
+                               b.name as brand_entity_name, b.manufacturer as brand_manufacturer,
+                               b.ce_certificate_url as brand_ce_cert_url
+                        FROM product p 
+                        LEFT JOIN category c ON p.category_id = c.id 
+                        LEFT JOIN brand b ON p.brand_id = b.id 
+                        WHERE p.slug LIKE ? OR p.name LIKE ?
+                        LIMIT 1
+                    `).bind(`${resolvedSlug}%`, `%${resolvedSlug}%`).first();
                 }
 
                 if (!product) {
@@ -1249,7 +1391,7 @@ export default {
                     INSERT INTO address (first_name, last_name, phone, street_address, city, zip_code) 
                     VALUES (?, ?, ?, ?, ?, ?) RETURNING id
                 `).bind(
-                    shipping.first_name || body.first_name || authUser.name || '',
+                    shipping.first_name || body.first_name || (authUser ? authUser.name : '') || '',
                     shipping.last_name || body.last_name || '',
                     shipping.phone || body.phone || '',
                     shipping.address || body.address || '',
@@ -1266,7 +1408,7 @@ export default {
                 batchQueries.push(env.DB.prepare(`
                     INSERT INTO "order" (total_amount, status, shipping_address_id, user_id, created_at) 
                     VALUES (?, 'pending', ?, ?, datetime('now'))
-                `).bind(total, addrId, authUser.sub));
+                `).bind(total, addrId, authUser ? authUser.sub : null));
 
                 // 4. Items and Stock Updates
                 let itemsListHtml = "<ul>";
@@ -1286,7 +1428,7 @@ export default {
                 const orderInsert = await env.DB.prepare(`
                     INSERT INTO "order" (total_amount, status, shipping_address_id, user_id, created_at) 
                     VALUES (?, 'pending', ?, ?, datetime('now')) RETURNING id
-                `).bind(total, addrId, authUser.sub).first();
+                `).bind(total, addrId, authUser ? authUser.sub : null).first();
 
                 const orderId = orderInsert.id;
 
@@ -1400,16 +1542,20 @@ export default {
                     return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
                 }
 
-                const items = await env.DB.prepare("SELECT oi.*, p.name FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = ?").bind(orderId).all();
+                const items = await env.DB.prepare("SELECT oi.*, p.name, p.name_en FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = ?").bind(orderId).all();
 
-                const cacheKey = `invoice-${orderId}.pdf`;
+                const url = new URL(request.url);
+                const lang = url.searchParams.get('lang') || 'fr';
+                const t = (fr, en) => lang === 'en' ? en : fr;
+
+                const cacheKey = `invoice-${orderId}-${lang}.pdf`;
                 try {
                     const cachedPdf = await env.STORAGE.get(cacheKey);
                     if (cachedPdf) {
                         return new Response(cachedPdf.body, {
                             headers: {
                                 "Content-Type": "application/pdf",
-                                "Content-Disposition": `inline; filename="Facture_${orderId}.pdf"`,
+                                "Content-Disposition": `inline; filename="${t('Facture', 'Invoice')}_${orderId}.pdf"`,
                                 ...corsHeaders
                             }
                         });
@@ -1423,16 +1569,19 @@ export default {
                     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
                     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-                    page.drawText('MediUnit - Facture Officielle', { x: 50, y: height - 50, size: 20, font: fontBold });
-                    page.drawText(`Commande ID: #${orderId}`, { x: 50, y: height - 80, size: 12, font: fontRegular });
-                    page.drawText(`Total: MAD ${order.total_amount}`, { x: 50, y: height - 100, size: 14, font: fontBold });
+                    page.drawText(t('MediUnit - Facture Officielle', 'MediUnit - Official Invoice'), { x: 50, y: height - 50, size: 20, font: fontBold });
+                    page.drawText(t(`Commande ID: #${orderId}`, `Order ID: #${orderId}`), { x: 50, y: height - 80, size: 12, font: fontRegular });
+                    page.drawText(`${t('Total', 'Total')}: MAD ${order.total_amount}`, { x: 50, y: height - 100, size: 14, font: fontBold });
 
                     let y = height - 140;
-                    page.drawText('Articles:', { x: 50, y, size: 12, font: fontBold });
+                    page.drawText(t('Articles:', 'Items:'), { x: 50, y, size: 12, font: fontBold });
                     y -= 20;
 
                     for (const item of items.results) {
-                        page.drawText(`- ${item.name}(x${item.quantity})`, { x: 50, y, size: 10, font: fontRegular });
+                        // In a real scenario, we might want item name in current lang if available, 
+                        // but here we just have item.name from the join.
+                        const itemName = (lang === 'en' && item.name_en) ? item.name_en : item.name;
+                        page.drawText(`- ${itemName} (x${item.quantity})`, { x: 50, y, size: 10, font: fontRegular });
                         y -= 15;
                     }
 
@@ -1444,7 +1593,11 @@ export default {
                     } catch (e) { console.error("R2 invoice put error", e); }
 
                     return new Response(pdfBytes, {
-                        headers: { "Content-Type": "application/pdf", ...corsHeaders }
+                        headers: { 
+                            "Content-Type": "application/pdf", 
+                            "Content-Disposition": `inline; filename="${t('Facture', 'Invoice')}_${orderId}.pdf"`,
+                            ...corsHeaders 
+                        }
                     });
                 } catch (e) {
                     return new Response("PDF Generation Error", { status: 500, headers: corsHeaders });
